@@ -400,8 +400,9 @@ if (personObj.role === 'TRAINEE') {
  const meet = ex.v_meet || '-';
  const dismiss = ex.v_dismiss || '-';
  const pairedTrainees = ex.v_paired_trainee || '-';
+ const remarks = ex.remark || '-';
 
- formattedText = `${nameStr} ${groupStr}\n\nMeet: ${meet}\n\nDismiss: ${dismiss}\n\nPaired Trainee(s): ${pairedTrainees}`;
+ formattedText = `${nameStr} ${groupStr}\n\nMeet: ${meet}\n\nDismiss: ${dismiss}\n\nPaired Trainee(s): ${pairedTrainees}\n\nRemarks: ${remarks}`;
 }
 
 const infoContent = document.getElementById('personInfoContent');
