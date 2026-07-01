@@ -150,18 +150,20 @@ activeTrainees.forEach(item => {
        subInfo = `<div class="text-[10px] text-teal-600 dark:text-teal-400 font-bold line-clamp-2 mt-1"><i class="fa-solid fa-handshake-angle opacity-80 mr-1"></i>${item.volPaired}</div>`;
    }
    
+   // 1-1 Pairing Star logic
+   let starBadge = '';
+   if (item.extra && item.extra.t_one_on_one) {
+       const oneOnOneRaw = String(item.extra.t_one_on_one).trim().toLowerCase();
+       if (oneOnOneRaw === 'yes' || oneOnOneRaw === 'y' || oneOnOneRaw === 'true') {
+           starBadge = `<i class="fa-solid fa-star text-yellow-500 shrink-0 text-xs ml-1" title="1-1 Pairing Required"></i>`;
+       }
+   }
+   
+   // Remarks Badge logic
    let remarksBadge = '';
    let remarkContent = null;
-   if (item.extra) {
-       const remarkKeys = Object.keys(item.extra).filter(k => k.toLowerCase().includes('remark'));
-       if (remarkKeys.length > 0) {
-           for (let k of remarkKeys) {
-               if (item.extra[k] && item.extra[k].toString().trim() !== "") {
-                   remarkContent = item.extra[k].toString().trim();
-                   break;
-               }
-           }
-       }
+   if (item.extra && item.extra.remark) {
+       remarkContent = String(item.extra.remark).trim();
    }
    if (remarkContent) {
        remarksBadge = `<i class="fa-solid fa-note-sticky text-yellow-500 dark:text-yellow-400 shrink-0 text-xs ml-1 cursor-help" title="${remarkContent.replace(/"/g, '&quot;')}"></i>`;
@@ -176,6 +178,7 @@ activeTrainees.forEach(item => {
                <div class="flex items-center gap-2">
                    <div class="flex items-center gap-1 min-w-0">
                        <span class="font-extrabold text-xs md:text-sm text-gray-900 dark:text-white leading-tight truncate">${item.name}</span>
+                       ${starBadge}
                        ${remarksBadge}
                    </div>
                    ${roleBadge}

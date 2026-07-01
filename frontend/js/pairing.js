@@ -151,19 +151,20 @@ if (!isVol && item.caregivers > 0) {
 cgBadge = `<span class="inline-flex shrink-0 items-center justify-center min-w-[16px] h-4 px-1 bg-red-500 rounded-full text-[9px] font-black text-white shadow-sm">${item.caregivers > 1 ? item.caregivers + 'C' : 'C'}</span>`;
 }
 
+// 1-1 Pairing Star logic for Trainees
+let starBadge = '';
+if (!isVol && item.extra && item.extra.t_one_on_one) {
+const oneOnOneRaw = String(item.extra.t_one_on_one).trim().toLowerCase();
+if (oneOnOneRaw === 'yes' || oneOnOneRaw === 'y' || oneOnOneRaw === 'true') {
+starBadge = `<i class="fa-solid fa-star text-yellow-500 shrink-0 text-xs ml-1" title="1-1 Pairing Required"></i>`;
+}
+}
+
 // Remarks Indicator Logic for both Volunteers and Trainees
 let remarksBadge = '';
 let remarkContent = null;
-if (item.extra) {
-const remarkKeys = Object.keys(item.extra).filter(k => k.toLowerCase().includes('remark'));
-if (remarkKeys.length > 0) {
-    for (let k of remarkKeys) {
-        if (item.extra[k] && item.extra[k].toString().trim() !== "") {
-            remarkContent = item.extra[k].toString().trim();
-            break;
-        }
-    }
-}
+if (item.extra && item.extra.remark) {
+remarkContent = String(item.extra.remark).trim();
 }
 
 if (remarkContent) {
@@ -187,6 +188,7 @@ return `
 <div class="flex justify-between items-center w-full gap-2">
 <div class="main-name-pill font-extrabold text-[11px] md:text-[12px] text-gray-900 dark:text-white leading-tight break-words whitespace-normal flex items-center gap-1 min-w-0 flex-1">
     <span class="break-words">${displayName}</span>
+    ${starBadge}
     ${remarksBadge}
     ${cgBadge}
     ${sysBadge}

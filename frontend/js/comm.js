@@ -702,19 +702,20 @@ volHtml = vols.map(v => `<span class="text-[9px] md:text-[11px] text-teal-700 da
 volHtml = `<span class="text-[9px] md:text-[11px] text-red-700 dark:text-red-400 leading-tight font-black bg-red-50 dark:bg-red-900/30 px-1.5 md:px-2 py-0.5 md:py-1 rounded border border-red-200 dark:border-red-800/50 whitespace-normal break-words w-fit max-w-full text-left uppercase"><i class="fa-solid fa-circle-exclamation mr-1"></i>Unpaired</span>`;
 }
 
+// 1-1 Pairing Star logic for Trainees
+let starBadge = '';
+if (p.extra && p.extra.t_one_on_one) {
+const oneOnOneRaw = String(p.extra.t_one_on_one).trim().toLowerCase();
+if (oneOnOneRaw === 'yes' || oneOnOneRaw === 'y' || oneOnOneRaw === 'true') {
+starBadge = `<i class="fa-solid fa-star text-yellow-500 shrink-0 text-[10px] md:text-xs ml-1" title="1-1 Pairing Required"></i>`;
+}
+}
+
 // Remarks Indicator Logic for Trainees in Tracker
 let remarksBadge = '';
 let remarkContent = null;
-if (p.extra) {
-const remarkKeys = Object.keys(p.extra).filter(k => k.toLowerCase().includes('remark'));
-if (remarkKeys.length > 0) {
-    for (let k of remarkKeys) {
-        if (p.extra[k] && p.extra[k].toString().trim() !== "") {
-            remarkContent = p.extra[k].toString().trim();
-            break;
-        }
-    }
-}
+if (p.extra && p.extra.remark) {
+remarkContent = String(p.extra.remark).trim();
 }
 if (remarkContent) {
 remarksBadge = `<i class="fa-solid fa-note-sticky text-yellow-500 dark:text-yellow-400 shrink-0 text-xs ml-1 cursor-help" title="${remarkContent.replace(/"/g, '&quot;')}"></i>`;
@@ -744,6 +745,7 @@ class="comm-att-card relative bg-white dark:bg-zinc-900 p-2 md:p-3 rounded borde
 onclick="toggleCommAttStatus('${safeName}', ${!isChecked}, event)">
 <div class="flex items-start gap-1.5 md:gap-2 w-full">
 <span class="font-extrabold text-xs md:text-sm text-gray-900 dark:text-white leading-tight break-words">${p.name}</span>
+${starBadge}
 ${remarksBadge}
 ${caregiverBadge}
 </div>
@@ -1151,19 +1153,20 @@ volHtml = vols.map(v => `<span class="text-[9px] md:text-[11px] text-teal-700 da
 volHtml = `<span class="text-[9px] md:text-[11px] text-red-700 dark:text-red-400 leading-tight font-black bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-800/50 whitespace-normal break-words w-fit max-w-full text-left uppercase"><i class="fa-solid fa-circle-exclamation mr-1"></i>Unpaired</span>`;
 }
 
+// 1-1 Pairing Star logic
+let starBadge = '';
+if (p.extra && p.extra.t_one_on_one) {
+const oneOnOneRaw = String(p.extra.t_one_on_one).trim().toLowerCase();
+if (oneOnOneRaw === 'yes' || oneOnOneRaw === 'y' || oneOnOneRaw === 'true') {
+   starBadge = `<i class="fa-solid fa-star text-yellow-500 shrink-0 text-[10px] md:text-xs ml-1" title="1-1 Pairing Required"></i>`;
+}
+}
+
 // Remarks Indicator Logic for Search Results
 let remarksBadge = '';
 let remarkContent = null;
-if (p.extra) {
-const remarkKeys = Object.keys(p.extra).filter(k => k.toLowerCase().includes('remark'));
-if (remarkKeys.length > 0) {
-    for (let k of remarkKeys) {
-        if (p.extra[k] && p.extra[k].toString().trim() !== "") {
-            remarkContent = p.extra[k].toString().trim();
-            break;
-        }
-    }
-}
+if (p.extra && p.extra.remark) {
+remarkContent = String(p.extra.remark).trim();
 }
 if (remarkContent) {
 remarksBadge = `<i class="fa-solid fa-note-sticky text-yellow-500 dark:text-yellow-400 shrink-0 text-xs ml-1 cursor-help" title="${remarkContent.replace(/"/g, '&quot;')}"></i>`;
@@ -1188,6 +1191,7 @@ html += `
 <li class="px-3 py-2 hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer flex flex-col gap-1.5 border-b border-gray-200 dark:border-zinc-800 last:border-0 transition" onclick="selectFromCommAttSearch('${safeName}')">
 <div class="flex items-start gap-1.5 w-full">
 <span class="font-bold text-xs md:text-sm text-gray-900 dark:text-white break-words leading-tight">${p.name}</span>
+${starBadge}
 ${remarksBadge}
 ${caregiverBadge}
 </div>
