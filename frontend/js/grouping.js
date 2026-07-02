@@ -64,9 +64,14 @@ currentGroupingFilter = document.getElementById('groupingFilterSelect').value;
 renderGroupingList();
 }
 
+let groupingSearchTimeout = null;
 function changeGroupingSearch() {
-currentGroupingSearch = document.getElementById('groupingSearchInput').value.toLowerCase().trim();
-renderGroupingList();
+if (groupingSearchTimeout) clearTimeout(groupingSearchTimeout);
+// Debounce search input to prevent rapid UI freezes
+groupingSearchTimeout = setTimeout(() => {
+    currentGroupingSearch = document.getElementById('groupingSearchInput').value.toLowerCase().trim();
+    renderGroupingList();
+}, 300);
 }
 
 function renderGroupingList() {
@@ -286,7 +291,6 @@ setTimeout(() => {
                                top: scrollTop,
                                behavior: 'smooth'
                            });
-                           // Fix to prevent renderer lock-up/freeze due to layout thrashing on multiple concurrent smooth scrolls 
                            hasScrolled = true;
                        }
                    }
@@ -442,6 +446,10 @@ if (groupingPollInterval) clearInterval(groupingPollInterval);
 groupingPollInterval = setInterval(async () => {
 const view = document.getElementById('view-manual-grouping');
 if(!view || view.classList.contains('hidden') || isGroupingSyncing || (dndState.el || dndState.isDragging)) return;
+
+// Lockout polling if the user is typing in the search box to prevent layout interruption
+if (document.activeElement && document.activeElement.id === 'groupingSearchInput') return;
+if (!document.getElementById('quickGroupModal').classList.contains('hidden')) return;
 
 if (pendingGroupingUpdates.length > 0) return;
 
@@ -993,49 +1001,53 @@ container.querySelectorAll('[contenteditable]').forEach(el => {
  el.style.outline = 'none';
 });
 
-try {
- if (typeof html2canvas === 'undefined') throw new Error("html2canvas not loaded");
- 
- const canvas = await html2canvas(container, {
-     scale: 3, // High quality resolution
-     backgroundColor: '#ffffff',
-     useCORS: true
- });
- 
- const dataUrl = canvas.toDataURL('image/png');
- 
- // Hide actual table, show image preview
- container.classList.add('hidden');
- preview.innerHTML = `<p class="text-xs text-green-600 dark:text-green-400 font-bold mb-2 text-center">Image ready! Long press to save or share directly.</p><img src="${dataUrl}" class="w-full h-auto shadow-md rounded border border-gray-200 dark:border-zinc-700 mx-auto" />`;
- 
- // Convert Base64 to Blob for Native Sharing
- generatedImageBlob = await (await fetch(dataUrl)).blob();
- 
- // Transform button to Share Via Apps
- btn.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Share via Apps';
- btn.onclick = executeNativeShare;
- btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
- btn.classList.add('bg-green-600', 'hover:bg-green-700');
-
- // Async Upload to Drive without blocking user
- if (currentGroupingSheetUrl) {
-     apiCall('uploadExportTable', {
-         sheetUrl: currentGroupingSheetUrl,
-         imageBase64: dataUrl
-     }).then(res => {
-         if(res.success) {
-             showFlashMessage('groupingGlobalStatus', "Backup saved to Drive.", 'success');
-         }
+// Yield to main thread to allow the UI to paint the loading state
+// before locking up heavily with html2canvas
+setTimeout(async () => {
+    try {
+     if (typeof html2canvas === 'undefined') throw new Error("html2canvas not loaded");
+     
+     const canvas = await html2canvas(container, {
+         scale: 3, // High quality resolution
+         backgroundColor: '#ffffff',
+         useCORS: true
      });
- }
+     
+     const dataUrl = canvas.toDataURL('image/png');
+     
+     // Hide actual table, show image preview
+     container.classList.add('hidden');
+     preview.innerHTML = `<p class="text-xs text-green-600 dark:text-green-400 font-bold mb-2 text-center">Image ready! Long press to save or share directly.</p><img src="${dataUrl}" class="w-full h-auto shadow-md rounded border border-gray-200 dark:border-zinc-700 mx-auto" />`;
+     
+     // Convert Base64 to Blob for Native Sharing
+     generatedImageBlob = await (await fetch(dataUrl)).blob();
+     
+     // Transform button to Share Via Apps
+     btn.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Share via Apps';
+     btn.onclick = executeNativeShare;
+     btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+     btn.classList.add('bg-green-600', 'hover:bg-green-700');
 
-} catch (e) {
- console.error(e);
- alert("Failed to share table: " + e.message);
- btn.innerHTML = originalText;
-} finally {
- btn.disabled = false;
-}
+     // Async Upload to Drive without blocking user
+     if (currentGroupingSheetUrl) {
+         apiCall('uploadExportTable', {
+             sheetUrl: currentGroupingSheetUrl,
+             imageBase64: dataUrl
+         }).then(res => {
+             if(res.success) {
+                 showFlashMessage('groupingGlobalStatus', "Backup saved to Drive.", 'success');
+             }
+         });
+     }
+
+    } catch (e) {
+     console.error(e);
+     alert("Failed to share table: " + e.message);
+     btn.innerHTML = originalText;
+    } finally {
+     btn.disabled = false;
+    }
+}, 100);
 }
 
 async function executeNativeShare() {
