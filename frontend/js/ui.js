@@ -355,6 +355,7 @@ e.stopPropagation();
 }
 };
 
+// Set passive to true to prevent scroll blocking on mobile devices, vastly improving UI performance
 element.addEventListener('touchstart', handleStart, {passive: true});
 element.addEventListener('touchmove', handleMove, {passive: true});
 element.addEventListener('touchend', handleEnd);
