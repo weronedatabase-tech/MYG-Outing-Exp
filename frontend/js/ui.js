@@ -375,39 +375,134 @@ try { window.navigator.vibrate(50); } catch(e){}
 
 if (!personObj) return;
 
-let formattedText = "";
 const ex = personObj.extra || {};
 const role = personObj.role || ex.role || 'TRAINEE';
+let htmlContent = "";
+
+const nameStr = personObj.name || '-';
+const groupNum = personObj.group || ex.v_group || '';
+const groupBadge = groupNum 
+? `<span class="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800 border px-2 py-0.5 rounded font-black text-xs uppercase shadow-sm">Grp ${groupNum}</span>` 
+: `<span class="bg-gray-100 text-gray-500 border-gray-200 dark:bg-zinc-800 dark:text-gray-400 dark:border-zinc-700 border px-2 py-0.5 rounded font-black text-xs uppercase shadow-sm">Unassigned</span>`;
+
+const roleBadge = role === 'TRAINEE' 
+? `<span class="bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 px-1.5 py-0.5 rounded text-[10px] uppercase font-black tracking-wider shadow-sm">Trainee</span>`
+: `<span class="bg-teal-50 text-teal-600 border border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 px-1.5 py-0.5 rounded text-[10px] uppercase font-black tracking-wider shadow-sm">Volunteer</span>`;
+
+let detailsHtml = "";
+let remarks = ex.remark || '-';
 
 if (role === 'TRAINEE') {
-const nameStr = personObj.name || '-';
-const groupStr = personObj.group ? `Grp ${personObj.group}` : 'Unassigned';
-
 const meetArr = ex.t_meet || '-';
 const meetFetch = ex.t_meet_fetching || '-';
 const disArr = ex.t_dismiss || '-';
 const disFetch = ex.t_dismiss_fetching || '-';
-
 const volPaired = personObj.volPaired || ex.t_paired_vol || '-';
 const dietary = ex.t_dietary || '-';
 const cgContact = ex.m_cg_contact || '-';
-const remarks = ex.remark || '-';
 
-formattedText = `${nameStr} | ${groupStr}\n\nMeet | Fetching arrangement: ${meetArr} | ${meetFetch}\n\nDismiss | Fetching arrangement: ${disArr} | ${disFetch}\n\nPaired Vol(s): ${volPaired}\n\nDietary: ${dietary}\n\nCaregiver's Contact: ${cgContact}\n\nRemarks: ${remarks}`;
+detailsHtml += `
+    <div class="space-y-4 mt-5 text-sm text-gray-700 dark:text-gray-300">
+        <div class="flex items-start gap-3">
+            <div class="w-6 flex justify-center text-blue-500 mt-0.5"><i class="fa-solid fa-location-dot text-lg"></i></div>
+            <div>
+                <strong class="text-gray-900 dark:text-white block leading-tight">Meeting</strong>
+                <span>${meetArr}</span> <span class="text-xs text-gray-500 block mt-0.5"><i class="fa-solid fa-car-side opacity-70"></i> Fetch: ${meetFetch}</span>
+            </div>
+        </div>
+        <div class="flex items-start gap-3">
+            <div class="w-6 flex justify-center text-purple-500 mt-0.5"><i class="fa-solid fa-flag-checkered text-lg"></i></div>
+            <div>
+                <strong class="text-gray-900 dark:text-white block leading-tight">Dismissal</strong>
+                <span>${disArr}</span> <span class="text-xs text-gray-500 block mt-0.5"><i class="fa-solid fa-car-side opacity-70"></i> Fetch: ${disFetch}</span>
+            </div>
+        </div>
+        <div class="flex items-start gap-3">
+            <div class="w-6 flex justify-center text-teal-500 mt-0.5"><i class="fa-solid fa-handshake-angle text-lg"></i></div>
+            <div>
+                <strong class="text-gray-900 dark:text-white block leading-tight">Paired Vol(s)</strong>
+                <span class="text-teal-700 dark:text-teal-400 font-bold">${volPaired}</span>
+            </div>
+        </div>
+        <div class="flex items-start gap-3">
+            <div class="w-6 flex justify-center text-red-400 mt-0.5"><i class="fa-solid fa-utensils text-lg"></i></div>
+            <div>
+                <strong class="text-gray-900 dark:text-white block leading-tight">Dietary</strong>
+                <span>${dietary}</span>
+            </div>
+        </div>
+        <div class="flex items-start gap-3">
+            <div class="w-6 flex justify-center text-green-500 mt-0.5"><i class="fa-solid fa-phone text-lg"></i></div>
+            <div>
+                <strong class="text-gray-900 dark:text-white block leading-tight">CG Contact</strong>
+                <span>${cgContact}</span>
+            </div>
+        </div>
+    </div>
+`;
 } else if (role === 'VOLUNTEER') {
-const nameStr = personObj.name || '-';
-const groupStr = ex.v_group ? `(Grp ${ex.v_group})` : '';
-
 const meet = ex.v_meet || '-';
 const dismiss = ex.v_dismiss || '-';
 const pairedTrainees = ex.v_paired_trainee || '-';
-const remarks = ex.remark || '-';
 
-formattedText = `${nameStr} ${groupStr}\n\nMeet: ${meet}\n\nDismiss: ${dismiss}\n\nPaired Trainee(s): ${pairedTrainees}\n\nRemarks: ${remarks}`;
+detailsHtml += `
+    <div class="space-y-4 mt-5 text-sm text-gray-700 dark:text-gray-300">
+        <div class="flex items-start gap-3">
+            <div class="w-6 flex justify-center text-blue-500 mt-0.5"><i class="fa-solid fa-location-dot text-lg"></i></div>
+            <div>
+                <strong class="text-gray-900 dark:text-white block leading-tight">Meeting</strong>
+                <span>${meet}</span>
+            </div>
+        </div>
+        <div class="flex items-start gap-3">
+            <div class="w-6 flex justify-center text-purple-500 mt-0.5"><i class="fa-solid fa-flag-checkered text-lg"></i></div>
+            <div>
+                <strong class="text-gray-900 dark:text-white block leading-tight">Dismissal</strong>
+                <span>${dismiss}</span>
+            </div>
+        </div>
+        <div class="flex items-start gap-3">
+            <div class="w-6 flex justify-center text-teal-500 mt-0.5"><i class="fa-solid fa-user-group text-lg"></i></div>
+            <div>
+                <strong class="text-gray-900 dark:text-white block leading-tight">Paired Trainee(s)</strong>
+                <span class="text-teal-700 dark:text-teal-400 font-bold">${pairedTrainees}</span>
+            </div>
+        </div>
+    </div>
+`;
 }
 
+let remarksHtml = "";
+if (remarks && remarks !== '-' && remarks.trim() !== '') {
+remarksHtml = `
+    <div class="mt-6 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 p-3.5 rounded-r-lg shadow-sm">
+        <div class="flex items-center gap-2 mb-1.5">
+            <i class="fa-solid fa-note-sticky text-yellow-600 dark:text-yellow-500 text-base"></i>
+            <span class="font-bold text-yellow-800 dark:text-yellow-400 text-xs uppercase tracking-wider">Remarks</span>
+        </div>
+        <p class="text-yellow-900 dark:text-yellow-100 text-sm whitespace-pre-wrap leading-relaxed">${remarks}</p>
+    </div>
+`;
+}
+
+htmlContent = `
+<div class="flex flex-col gap-2 border-b border-gray-200 dark:border-zinc-800 pb-4">
+    <div class="flex items-start justify-between gap-2">
+        <h4 class="text-xl md:text-2xl font-black text-gray-900 dark:text-white break-words leading-tight flex-1">${nameStr}</h4>
+        <div class="shrink-0 mt-1">${roleBadge}</div>
+    </div>
+    <div class="flex items-center mt-1">${groupBadge}</div>
+</div>
+${detailsHtml}
+${remarksHtml}
+`;
+
 const infoContent = document.getElementById('personInfoContent');
-if(infoContent) infoContent.textContent = formattedText;
+if(infoContent) {
+infoContent.className = "w-full"; // Clear out pre-wrap/mono text utility classes
+infoContent.innerHTML = htmlContent;
+}
+
 const infoModal = document.getElementById('personInfoModal');
 if(infoModal) infoModal.classList.remove('hidden');
 }
