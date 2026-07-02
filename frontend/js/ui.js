@@ -118,18 +118,18 @@ isFilteredManualPairingMode = false;
 let targetView = window.filteredManualPairingSourceView || 'comm';
 
 if (targetView === 'manual-pairing') {
-  // Re-initialize standard manual pairing to effectively exit filtered mode safely
-  openManualPairing();
+ // Re-initialize standard manual pairing to effectively exit filtered mode safely
+ openManualPairing();
 } else if (targetView === 'comm-attendance') {
-  // Restore Live Tracker title securely before showing
-  const selector = document.getElementById('actualSheetSelector');
-  if (selector && selector.options.length > 0 && selector.selectedIndex >= 0) {
-      const titleEl = document.getElementById('navContextTitle');
-      if(titleEl) titleEl.innerText = "Live: " + selector.options[selector.selectedIndex].text;
-  }
-  showView('comm-attendance');
+ // Restore Live Tracker title securely before showing
+ const selector = document.getElementById('actualSheetSelector');
+ if (selector && selector.options.length > 0 && selector.selectedIndex >= 0) {
+     const titleEl = document.getElementById('navContextTitle');
+     if(titleEl) titleEl.innerText = "Live: " + selector.options[selector.selectedIndex].text;
+ }
+ showView('comm-attendance');
 } else {
-  showView('comm');
+ showView('comm');
 }
 } else {
 showView('comm');
@@ -149,7 +149,7 @@ if(icon) icon.classList.add('fa-spin');
 if ('serviceWorker' in navigator) {
 navigator.serviceWorker.getRegistrations().then(regs => {
 for (let reg of regs) {
-  reg.update();
+ reg.update();
 }
 });
 }
@@ -158,7 +158,7 @@ for (let reg of regs) {
 if ('caches' in window) {
 caches.keys().then(names => {
 Promise.all(names.map(name => caches.delete(name))).then(() => {
-  window.location.reload(true);
+ window.location.reload(true);
 });
 });
 } else {
@@ -250,17 +250,17 @@ function updateUnpairedNotification(count) {
 if(window.currentSheetList) {
 window.currentSheetList.forEach((item, index) => {
 if (item.sheetUrl === currentCommAttSheetUrl || item.sheetUrl === currentManualPairingSheetUrl || (typeof currentGroupingSheetUrl !== 'undefined' && item.sheetUrl === currentGroupingSheetUrl)) {
-    const pendingDiv = document.getElementById(`pending-badge-${index}`);
-    if (pendingDiv) {
-        if (count > 0) {
-            pendingDiv.innerHTML = `<button onclick="openFilteredManualPairing('${item.sheetUrl}')" class="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border border-red-200 dark:border-red-800 animate-pulse shadow-sm flex items-center justify-center w-fit pointer-events-auto cursor-pointer">${count} Unpaired</button>`;
-            pendingDiv.classList.remove('hidden');
-            pendingDiv.classList.add('flex');
-        } else {
-            pendingDiv.classList.add('hidden');
-            pendingDiv.classList.remove('flex');
-        }
-    }
+   const pendingDiv = document.getElementById(`pending-badge-${index}`);
+   if (pendingDiv) {
+       if (count > 0) {
+           pendingDiv.innerHTML = `<button onclick="openFilteredManualPairing('${item.sheetUrl}')" class="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border border-red-200 dark:border-red-800 animate-pulse shadow-sm flex items-center justify-center w-fit pointer-events-auto cursor-pointer">${count} Unpaired</button>`;
+           pendingDiv.classList.remove('hidden');
+           pendingDiv.classList.add('flex');
+       } else {
+           pendingDiv.classList.add('hidden');
+           pendingDiv.classList.remove('flex');
+       }
+   }
 }
 });
 }
@@ -302,8 +302,8 @@ let hasFired = false;
 
 const clearTimer = () => {
 if (pressTimer !== null) {
- clearTimeout(pressTimer);
- pressTimer = null;
+clearTimeout(pressTimer);
+pressTimer = null;
 }
 };
 
@@ -312,19 +312,19 @@ if (e.button !== undefined && e.button !== 0) return; // Ignore right-click/midd
 
 hasFired = false;
 if (e.touches && e.touches.length > 0) {
- startX = e.touches[0].clientX;
- startY = e.touches[0].clientY;
+startX = e.touches[0].clientX;
+startY = e.touches[0].clientY;
 } else {
- startX = e.clientX;
- startY = e.clientY;
+startX = e.clientX;
+startY = e.clientY;
 }
 
 pressTimer = setTimeout(() => {
- hasFired = true;
- callback();
- // Force visual reset on the element just in case it got stuck in active state
- element.classList.remove('active:scale-95');
- setTimeout(() => element.classList.add('active:scale-95'), 100);
+hasFired = true;
+callback();
+// Force visual reset on the element just in case it got stuck in active state
+element.classList.remove('active:scale-95');
+setTimeout(() => element.classList.add('active:scale-95'), 100);
 }, 500); // 500ms threshold
 };
 
@@ -333,16 +333,16 @@ if (!pressTimer) return;
 let currentX, currentY;
 
 if (e.touches && e.touches.length > 0) {
- currentX = e.touches[0].clientX;
- currentY = e.touches[0].clientY;
+currentX = e.touches[0].clientX;
+currentY = e.touches[0].clientY;
 } else {
- currentX = e.clientX;
- currentY = e.clientY;
+currentX = e.clientX;
+currentY = e.clientY;
 }
 
 // Cancel if moved more than 10px
 if (Math.abs(currentX - startX) > 10 || Math.abs(currentY - startY) > 10) {
- clearTimer();
+clearTimer();
 }
 };
 
@@ -350,8 +350,8 @@ const handleEnd = (e) => {
 clearTimer();
 // Optional: If you want to swallow the click event immediately following a long press
 if (hasFired) {
- e.preventDefault();
- e.stopPropagation();
+e.preventDefault();
+e.stopPropagation();
 }
 };
 
@@ -377,32 +377,33 @@ if (!personObj) return;
 
 let formattedText = "";
 const ex = personObj.extra || {};
+const role = personObj.role || ex.role || 'TRAINEE';
 
-if (personObj.role === 'TRAINEE') {
- const nameStr = personObj.name || '-';
- const groupStr = personObj.group ? `Grp ${personObj.group}` : 'Unassigned';
- 
- const meetArr = ex.t_meet || '-';
- const meetFetch = ex.t_meet_fetching || '-';
- const disArr = ex.t_dismiss || '-';
- const disFetch = ex.t_dismiss_fetching || '-';
- 
- const volPaired = ex.t_paired_vol || '-';
- const dietary = ex.t_dietary || '-';
- const cgContact = ex.m_cg_contact || '-';
- const remarks = ex.remark || '-';
+if (role === 'TRAINEE') {
+const nameStr = personObj.name || '-';
+const groupStr = personObj.group ? `Grp ${personObj.group}` : 'Unassigned';
 
- formattedText = `${nameStr} | ${groupStr}\n\nMeet | Fetching arrangement: ${meetArr} | ${meetFetch}\n\nDismiss | Fetching arrangement: ${disArr} | ${disFetch}\n\nPaired Vol(s): ${volPaired}\n\nDietary: ${dietary}\n\nCaregiver's Contact: ${cgContact}\n\nRemarks: ${remarks}`;
-} else if (personObj.role === 'VOLUNTEER') {
- const nameStr = personObj.name || '-';
- const groupStr = ex.v_group ? `(Grp ${ex.v_group})` : '';
- 
- const meet = ex.v_meet || '-';
- const dismiss = ex.v_dismiss || '-';
- const pairedTrainees = ex.v_paired_trainee || '-';
- const remarks = ex.remark || '-';
+const meetArr = ex.t_meet || '-';
+const meetFetch = ex.t_meet_fetching || '-';
+const disArr = ex.t_dismiss || '-';
+const disFetch = ex.t_dismiss_fetching || '-';
 
- formattedText = `${nameStr} ${groupStr}\n\nMeet: ${meet}\n\nDismiss: ${dismiss}\n\nPaired Trainee(s): ${pairedTrainees}\n\nRemarks: ${remarks}`;
+const volPaired = personObj.volPaired || ex.t_paired_vol || '-';
+const dietary = ex.t_dietary || '-';
+const cgContact = ex.m_cg_contact || '-';
+const remarks = ex.remark || '-';
+
+formattedText = `${nameStr} | ${groupStr}\n\nMeet | Fetching arrangement: ${meetArr} | ${meetFetch}\n\nDismiss | Fetching arrangement: ${disArr} | ${disFetch}\n\nPaired Vol(s): ${volPaired}\n\nDietary: ${dietary}\n\nCaregiver's Contact: ${cgContact}\n\nRemarks: ${remarks}`;
+} else if (role === 'VOLUNTEER') {
+const nameStr = personObj.name || '-';
+const groupStr = ex.v_group ? `(Grp ${ex.v_group})` : '';
+
+const meet = ex.v_meet || '-';
+const dismiss = ex.v_dismiss || '-';
+const pairedTrainees = ex.v_paired_trainee || '-';
+const remarks = ex.remark || '-';
+
+formattedText = `${nameStr} ${groupStr}\n\nMeet: ${meet}\n\nDismiss: ${dismiss}\n\nPaired Trainee(s): ${pairedTrainees}\n\nRemarks: ${remarks}`;
 }
 
 const infoContent = document.getElementById('personInfoContent');
