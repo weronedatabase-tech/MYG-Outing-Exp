@@ -754,23 +754,25 @@ let html = `
 <table class="w-full text-left border-collapse text-[9px] md:text-xs text-gray-800" style="font-family: Arial, sans-serif; border: 1px solid #333; table-layout: fixed; width: 100%; word-wrap: break-word;">
   <thead>
       <tr style="background-color: #333; color: #fff;">
-          <th style="padding: 3px; border: 1px solid #555; width: 30%; vertical-align: middle;">Volunteer</th>
-          <th style="padding: 3px; border: 1px solid #555; width: 30%; vertical-align: middle;">Trainee(s)</th>
-          <th style="padding: 3px; border: 1px solid #555; width: 10%; text-align: center; vertical-align: middle;">Grp</th>
-          <th style="padding: 3px; border: 1px solid #555; width: 30%; vertical-align: middle;">Remarks</th>
+          <th style="padding: 4px; border: 1px solid #555; width: 30%; vertical-align: middle; text-align: left; line-height: 1.2;">Volunteer</th>
+          <th style="padding: 4px; border: 1px solid #555; width: 30%; vertical-align: middle; text-align: left; line-height: 1.2;">Trainee(s)</th>
+          <th style="padding: 4px; border: 1px solid #555; width: 10%; vertical-align: middle; text-align: center; line-height: 1.2;">Grp</th>
+          <th style="padding: 4px; border: 1px solid #555; width: 30%; vertical-align: middle; text-align: left; line-height: 1.2;">Remarks</th>
       </tr>
   </thead>
   <tbody>
 `;
 
-if (sortedGroups.length === 0) {
-  html += `<tr><td colspan="4" style="padding: 10px; text-align: center; font-style: italic;">No groups assigned yet.</td></tr>`;
+if (sortedGroups.length === 0 && groupingData.volunteers.length === 0 && groupingData.trainees.length === 0) {
+  html += `<tr><td colspan="4" style="padding: 10px; text-align: center; font-style: italic;">No data.</td></tr>`;
 }
 
 const volLookup = new Map();
 groupingData.volunteers.forEach(v => {
   volLookup.set(v.name.toLowerCase(), v);
 });
+
+let displayedVols = new Set();
 
 sortedGroups.forEach((g, index) => {
   const bgColor = EXPORT_COLORS[index % EXPORT_COLORS.length];
@@ -786,6 +788,7 @@ sortedGroups.forEach((g, index) => {
           const vols = t.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v);
           vols.forEach(v => {
               const vKey = v.toLowerCase();
+              displayedVols.add(vKey);
               if (!volMap.has(vKey)) {
                   const vObj = volLookup.get(vKey);
                   volMap.set(vKey, {
@@ -821,9 +824,9 @@ sortedGroups.forEach((g, index) => {
   
   if (rows.length === 0 && unpairedTrainees.length === 0) {
       html += `<tr style="background-color: ${bgColor};">
-          <td colspan="2" style="padding: 3px; border: 1px solid #ccc; font-style: italic; vertical-align: middle;">No assignments</td>
-          <td style="padding: 3px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle;">${g}</td>
-          <td style="padding: 3px; border: 1px solid #ccc; vertical-align: middle;"></td>
+          <td colspan="2" style="padding: 4px; border: 1px solid #ccc; font-style: italic; vertical-align: middle; text-align: left; line-height: 1.2;">No assignments</td>
+          <td style="padding: 4px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.2;">${g}</td>
+          <td style="padding: 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.2;"></td>
       </tr>`;
   }
   
@@ -847,23 +850,124 @@ sortedGroups.forEach((g, index) => {
       let rDisplay = allRemarks.join('<br><br>');
       
       html += `<tr style="background-color: ${bgColor};">
-          <td style="padding: 3px; border: 1px solid #ccc; vertical-align: middle;">${volDisplay}</td>
-          <td style="padding: 3px; border: 1px solid #ccc; vertical-align: middle;">${tDisplay}</td>
-          <td style="padding: 3px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle;">${g}</td>
-          <td contenteditable="true" style="padding: 3px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
+          <td style="padding: 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.2;">${volDisplay}</td>
+          <td style="padding: 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.2;">${tDisplay}</td>
+          <td style="padding: 4px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.2;">${g}</td>
+          <td contenteditable="true" style="padding: 4px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.2;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
       </tr>`;
   });
   
   unpairedTrainees.forEach(ut => {
       let rDisplay = ut.remarks ? `<strong>[Trn] ${ut.name}:</strong> ${ut.remarks}` : '';
       html += `<tr style="background-color: ${bgColor};">
-          <td style="padding: 3px; border: 1px solid #ccc; font-weight: bold; color: #dc2626; text-align: center; vertical-align: middle;">-</td>
-          <td style="padding: 3px; border: 1px solid #ccc; vertical-align: middle;">${ut.name}</td>
-          <td style="padding: 3px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle;">${g}</td>
-          <td contenteditable="true" style="padding: 3px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
+          <td style="padding: 4px; border: 1px solid #ccc; font-weight: bold; color: #dc2626; text-align: center; vertical-align: middle; line-height: 1.2;">-</td>
+          <td style="padding: 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.2;">${ut.name}</td>
+          <td style="padding: 4px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.2;">${g}</td>
+          <td contenteditable="true" style="padding: 4px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.2;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
       </tr>`;
   });
 });
+
+// Handle Unpaired Volunteers and Unassigned Trainees
+let unassignedTrainees = groupingData.trainees.filter(t => t.attending === 'y' && !t.isGoneHome && String(t.group).trim() === "");
+let volMapUnassigned = new Map();
+let orphanedTrainees = [];
+
+unassignedTrainees.forEach(t => {
+    const remarks = t.extra?.remarks || t.extra?.remark || '';
+    if (t.volPaired) {
+        const vols = t.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v);
+        vols.forEach(v => {
+            const vKey = v.toLowerCase();
+            displayedVols.add(vKey);
+            if (!volMapUnassigned.has(vKey)) {
+                const vObj = volLookup.get(vKey);
+                volMapUnassigned.set(vKey, {
+                    name: vObj ? vObj.name : v, 
+                    isGroupIC: false,
+                    isMeetIC: vObj ? vObj.meetIC === true : false,
+                    isDismissIC: vObj ? vObj.dismissIC === true : false,
+                    meetLoc: vObj ? (vObj.extra?.v_meet || '').trim() : '',
+                    dismissLoc: vObj ? (vObj.extra?.v_dismiss || '').trim() : '',
+                    volRemark: vObj ? (vObj.extra?.remarks || vObj.extra?.remark || '') : '',
+                    trainees: [],
+                    remarks: []
+                });
+            }
+            const vData = volMapUnassigned.get(vKey);
+            vData.trainees.push(t.name);
+            if (remarks) vData.remarks.push(`<strong>[Trn] ${t.name}:</strong> ${remarks}`);
+        });
+    } else {
+        orphanedTrainees.push({ name: t.name, remarks: remarks });
+    }
+});
+
+// Any remaining volunteers not displayed
+let unpairedVols = groupingData.volunteers.filter(v => !displayedVols.has(v.name.toLowerCase()));
+unpairedVols.forEach(v => {
+    volMapUnassigned.set(v.name.toLowerCase(), {
+        name: v.name,
+        isGroupIC: false,
+        isMeetIC: v.meetIC === true,
+        isDismissIC: v.dismissIC === true,
+        meetLoc: (v.extra?.v_meet || '').trim(),
+        dismissLoc: (v.extra?.v_dismiss || '').trim(),
+        volRemark: (v.extra?.remarks || v.extra?.remark || ''),
+        trainees: [],
+        remarks: []
+    });
+});
+
+let unassignedRows = Array.from(volMapUnassigned.values());
+
+if (unassignedRows.length > 0 || orphanedTrainees.length > 0) {
+    const bgColor = '#f3f4f6'; // Light gray for unassigned
+    
+    unassignedRows.sort((a, b) => {
+        const aIsIC = a.isMeetIC || a.isDismissIC;
+        const bIsIC = b.isMeetIC || b.isDismissIC;
+        if (aIsIC && !bIsIC) return -1;
+        if (!aIsIC && bIsIC) return 1;
+        return a.name.localeCompare(b.name);
+    });
+    
+    unassignedRows.forEach(r => {
+        let volDisplay = `<span style="font-weight: bold;">${r.name}</span>`;
+        if (r.isMeetIC) {
+            const locDisplay = r.meetLoc ? `Meeting - ${r.meetLoc}` : 'Meeting';
+            volDisplay += `<br><strong style="color: #047857; font-size: 0.9em; display:inline-block; margin-top:2px;">(${locDisplay} IC)</strong>`;
+        }
+        if (r.isDismissIC) {
+            const locDisplay = r.dismissLoc ? `Dismissal - ${r.dismissLoc}` : 'Dismissal';
+            volDisplay += `<br><strong style="color: #6d28d9; font-size: 0.9em; display:inline-block; margin-top:2px;">(${locDisplay} IC)</strong>`;
+        }
+        
+        let tDisplay = r.trainees.length > 0 ? r.trainees.join('<br>') : '-';
+        
+        let allRemarks = [];
+        if (r.volRemark) allRemarks.push(`<strong>[Vol] ${r.name}:</strong> ${r.volRemark}`);
+        if (r.remarks.length > 0) allRemarks = allRemarks.concat(r.remarks);
+        let rDisplay = allRemarks.join('<br><br>');
+        
+        html += `<tr style="background-color: ${bgColor};">
+            <td style="padding: 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.2;">${volDisplay}</td>
+            <td style="padding: 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.2;">${tDisplay}</td>
+            <td style="padding: 4px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.2;">-</td>
+            <td contenteditable="true" style="padding: 4px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.2;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
+        </tr>`;
+    });
+    
+    orphanedTrainees.forEach(ut => {
+        let rDisplay = ut.remarks ? `<strong>[Trn] ${ut.name}:</strong> ${ut.remarks}` : '';
+        html += `<tr style="background-color: ${bgColor};">
+            <td style="padding: 4px; border: 1px solid #ccc; font-weight: bold; color: #dc2626; text-align: center; vertical-align: middle; line-height: 1.2;">-</td>
+            <td style="padding: 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.2;">${ut.name}</td>
+            <td style="padding: 4px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.2;">-</td>
+            <td contenteditable="true" style="padding: 4px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.2;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
+        </tr>`;
+    });
+}
 
 html += `</tbody></table>`;
 container.innerHTML = html;
