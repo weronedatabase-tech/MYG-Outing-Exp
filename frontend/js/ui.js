@@ -403,45 +403,45 @@ const cgContact = ex.m_cg_contact || '-';
 
 detailsHtml += `
     <div class="space-y-3 mt-4 text-sm text-gray-700 dark:text-gray-300">
-        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-            <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0"><i class="fa-solid fa-location-dot"></i></div>
+        <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0 mt-0.5"><i class="fa-solid fa-location-dot"></i></div>
             <div class="flex-1 min-w-0">
                 <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Meeting</div>
-                <div class="font-medium text-gray-900 dark:text-white truncate">${meetArr}</div>
-                ${meetFetch !== '-' && meetFetch !== '' ? `<div class="text-[11px] text-gray-500 truncate mt-0.5"><i class="fa-solid fa-car-side mr-1 opacity-70"></i>Fetch: ${meetFetch}</div>` : ''}
+                <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${meetArr}</div>
+                ${meetFetch !== '-' && meetFetch !== '' ? `<div class="text-[11px] text-gray-500 break-words whitespace-pre-wrap mt-1"><i class="fa-solid fa-car-side mr-1 opacity-70"></i>Fetch: ${meetFetch}</div>` : ''}
             </div>
         </div>
 
-        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-            <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-500 shrink-0"><i class="fa-solid fa-flag-checkered"></i></div>
+        <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-500 shrink-0 mt-0.5"><i class="fa-solid fa-flag-checkered"></i></div>
             <div class="flex-1 min-w-0">
                 <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dismissal</div>
-                <div class="font-medium text-gray-900 dark:text-white truncate">${disArr}</div>
-                ${disFetch !== '-' && disFetch !== '' ? `<div class="text-[11px] text-gray-500 truncate mt-0.5"><i class="fa-solid fa-car-side mr-1 opacity-70"></i>Fetch: ${disFetch}</div>` : ''}
+                <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${disArr}</div>
+                ${disFetch !== '-' && disFetch !== '' ? `<div class="text-[11px] text-gray-500 break-words whitespace-pre-wrap mt-1"><i class="fa-solid fa-car-side mr-1 opacity-70"></i>Fetch: ${disFetch}</div>` : ''}
             </div>
         </div>
 
-        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-            <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0"><i class="fa-solid fa-handshake-angle"></i></div>
+        <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0 mt-0.5"><i class="fa-solid fa-handshake-angle"></i></div>
             <div class="flex-1 min-w-0">
                 <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Paired Vol(s)</div>
-                <div class="font-bold text-teal-700 dark:text-teal-400 break-words">${volPaired}</div>
+                <div class="font-bold text-teal-700 dark:text-teal-400 break-words whitespace-pre-wrap">${volPaired}</div>
             </div>
         </div>
 
-        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-            <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-500 shrink-0"><i class="fa-solid fa-utensils"></i></div>
+        <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-500 shrink-0 mt-0.5"><i class="fa-solid fa-utensils"></i></div>
             <div class="flex-1 min-w-0">
                 <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dietary Restrictions</div>
-                <div class="font-medium text-gray-900 dark:text-white break-words">${dietary}</div>
+                <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${dietary}</div>
             </div>
         </div>
 
-        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-            <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-500 shrink-0"><i class="fa-solid fa-phone"></i></div>
+        <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-500 shrink-0 mt-0.5"><i class="fa-solid fa-phone"></i></div>
             <div class="flex-1 min-w-0">
                 <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">CG Contact</div>
-                <div class="font-medium text-gray-900 dark:text-white truncate">${cgContact}</div>
+                <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${cgContact}</div>
             </div>
         </div>
     </div>
@@ -453,27 +453,27 @@ const pairedTrainees = ex.v_paired_trainee || '-';
 
 detailsHtml += `
     <div class="space-y-3 mt-4 text-sm text-gray-700 dark:text-gray-300">
-        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-            <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0"><i class="fa-solid fa-location-dot"></i></div>
+        <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0 mt-0.5"><i class="fa-solid fa-location-dot"></i></div>
             <div class="flex-1 min-w-0">
                 <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Meeting</div>
-                <div class="font-medium text-gray-900 dark:text-white truncate">${meet}</div>
+                <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${meet}</div>
             </div>
         </div>
 
-        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-            <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-500 shrink-0"><i class="fa-solid fa-flag-checkered"></i></div>
+        <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-500 shrink-0 mt-0.5"><i class="fa-solid fa-flag-checkered"></i></div>
             <div class="flex-1 min-w-0">
                 <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dismissal</div>
-                <div class="font-medium text-gray-900 dark:text-white truncate">${dismiss}</div>
+                <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${dismiss}</div>
             </div>
         </div>
 
-        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-            <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0"><i class="fa-solid fa-user-group"></i></div>
+        <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0 mt-0.5"><i class="fa-solid fa-user-group"></i></div>
             <div class="flex-1 min-w-0">
                 <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Paired Trainee(s)</div>
-                <div class="font-bold text-teal-700 dark:text-teal-400 break-words">${pairedTrainees}</div>
+                <div class="font-bold text-teal-700 dark:text-teal-400 break-words whitespace-pre-wrap">${pairedTrainees}</div>
             </div>
         </div>
     </div>
