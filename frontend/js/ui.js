@@ -402,40 +402,46 @@ const dietary = ex.t_dietary || '-';
 const cgContact = ex.m_cg_contact || '-';
 
 detailsHtml += `
-    <div class="space-y-4 mt-5 text-sm text-gray-700 dark:text-gray-300">
-        <div class="flex items-start gap-3">
-            <div class="w-6 flex justify-center text-blue-500 mt-0.5"><i class="fa-solid fa-location-dot text-lg"></i></div>
-            <div>
-                <strong class="text-gray-900 dark:text-white block leading-tight">Meeting</strong>
-                <span>${meetArr}</span> <span class="text-xs text-gray-500 block mt-0.5"><i class="fa-solid fa-car-side opacity-70"></i> Fetch: ${meetFetch}</span>
+    <div class="space-y-3 mt-4 text-sm text-gray-700 dark:text-gray-300">
+        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0"><i class="fa-solid fa-location-dot"></i></div>
+            <div class="flex-1 min-w-0">
+                <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Meeting</div>
+                <div class="font-medium text-gray-900 dark:text-white truncate">${meetArr}</div>
+                ${meetFetch !== '-' && meetFetch !== '' ? `<div class="text-[11px] text-gray-500 truncate mt-0.5"><i class="fa-solid fa-car-side mr-1 opacity-70"></i>Fetch: ${meetFetch}</div>` : ''}
             </div>
         </div>
-        <div class="flex items-start gap-3">
-            <div class="w-6 flex justify-center text-purple-500 mt-0.5"><i class="fa-solid fa-flag-checkered text-lg"></i></div>
-            <div>
-                <strong class="text-gray-900 dark:text-white block leading-tight">Dismissal</strong>
-                <span>${disArr}</span> <span class="text-xs text-gray-500 block mt-0.5"><i class="fa-solid fa-car-side opacity-70"></i> Fetch: ${disFetch}</span>
+
+        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-500 shrink-0"><i class="fa-solid fa-flag-checkered"></i></div>
+            <div class="flex-1 min-w-0">
+                <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dismissal</div>
+                <div class="font-medium text-gray-900 dark:text-white truncate">${disArr}</div>
+                ${disFetch !== '-' && disFetch !== '' ? `<div class="text-[11px] text-gray-500 truncate mt-0.5"><i class="fa-solid fa-car-side mr-1 opacity-70"></i>Fetch: ${disFetch}</div>` : ''}
             </div>
         </div>
-        <div class="flex items-start gap-3">
-            <div class="w-6 flex justify-center text-teal-500 mt-0.5"><i class="fa-solid fa-handshake-angle text-lg"></i></div>
-            <div>
-                <strong class="text-gray-900 dark:text-white block leading-tight">Paired Vol(s)</strong>
-                <span class="text-teal-700 dark:text-teal-400 font-bold">${volPaired}</span>
+
+        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0"><i class="fa-solid fa-handshake-angle"></i></div>
+            <div class="flex-1 min-w-0">
+                <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Paired Vol(s)</div>
+                <div class="font-bold text-teal-700 dark:text-teal-400 break-words">${volPaired}</div>
             </div>
         </div>
-        <div class="flex items-start gap-3">
-            <div class="w-6 flex justify-center text-red-400 mt-0.5"><i class="fa-solid fa-utensils text-lg"></i></div>
-            <div>
-                <strong class="text-gray-900 dark:text-white block leading-tight">Dietary</strong>
-                <span>${dietary}</span>
+
+        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-500 shrink-0"><i class="fa-solid fa-utensils"></i></div>
+            <div class="flex-1 min-w-0">
+                <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dietary Restrictions</div>
+                <div class="font-medium text-gray-900 dark:text-white break-words">${dietary}</div>
             </div>
         </div>
-        <div class="flex items-start gap-3">
-            <div class="w-6 flex justify-center text-green-500 mt-0.5"><i class="fa-solid fa-phone text-lg"></i></div>
-            <div>
-                <strong class="text-gray-900 dark:text-white block leading-tight">CG Contact</strong>
-                <span>${cgContact}</span>
+
+        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-500 shrink-0"><i class="fa-solid fa-phone"></i></div>
+            <div class="flex-1 min-w-0">
+                <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">CG Contact</div>
+                <div class="font-medium text-gray-900 dark:text-white truncate">${cgContact}</div>
             </div>
         </div>
     </div>
@@ -446,26 +452,28 @@ const dismiss = ex.v_dismiss || '-';
 const pairedTrainees = ex.v_paired_trainee || '-';
 
 detailsHtml += `
-    <div class="space-y-4 mt-5 text-sm text-gray-700 dark:text-gray-300">
-        <div class="flex items-start gap-3">
-            <div class="w-6 flex justify-center text-blue-500 mt-0.5"><i class="fa-solid fa-location-dot text-lg"></i></div>
-            <div>
-                <strong class="text-gray-900 dark:text-white block leading-tight">Meeting</strong>
-                <span>${meet}</span>
+    <div class="space-y-3 mt-4 text-sm text-gray-700 dark:text-gray-300">
+        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0"><i class="fa-solid fa-location-dot"></i></div>
+            <div class="flex-1 min-w-0">
+                <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Meeting</div>
+                <div class="font-medium text-gray-900 dark:text-white truncate">${meet}</div>
             </div>
         </div>
-        <div class="flex items-start gap-3">
-            <div class="w-6 flex justify-center text-purple-500 mt-0.5"><i class="fa-solid fa-flag-checkered text-lg"></i></div>
-            <div>
-                <strong class="text-gray-900 dark:text-white block leading-tight">Dismissal</strong>
-                <span>${dismiss}</span>
+
+        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-500 shrink-0"><i class="fa-solid fa-flag-checkered"></i></div>
+            <div class="flex-1 min-w-0">
+                <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dismissal</div>
+                <div class="font-medium text-gray-900 dark:text-white truncate">${dismiss}</div>
             </div>
         </div>
-        <div class="flex items-start gap-3">
-            <div class="w-6 flex justify-center text-teal-500 mt-0.5"><i class="fa-solid fa-user-group text-lg"></i></div>
-            <div>
-                <strong class="text-gray-900 dark:text-white block leading-tight">Paired Trainee(s)</strong>
-                <span class="text-teal-700 dark:text-teal-400 font-bold">${pairedTrainees}</span>
+
+        <div class="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+            <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0"><i class="fa-solid fa-user-group"></i></div>
+            <div class="flex-1 min-w-0">
+                <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Paired Trainee(s)</div>
+                <div class="font-bold text-teal-700 dark:text-teal-400 break-words">${pairedTrainees}</div>
             </div>
         </div>
     </div>
@@ -475,26 +483,26 @@ detailsHtml += `
 let remarksHtml = "";
 if (remarks && remarks !== '-' && remarks.trim() !== '') {
 remarksHtml = `
-    <div class="mt-6 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 p-3.5 rounded-r-lg shadow-sm">
-        <div class="flex items-center gap-2 mb-1.5">
-            <i class="fa-solid fa-note-sticky text-yellow-600 dark:text-yellow-500 text-base"></i>
-            <span class="font-bold text-yellow-800 dark:text-yellow-400 text-xs uppercase tracking-wider">Remarks</span>
+    <div class="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 border-l-4 border-l-yellow-400 dark:border-l-yellow-500 p-3 rounded-r-lg shadow-sm">
+        <div class="flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-triangle-exclamation text-yellow-600 dark:text-yellow-500 text-sm"></i>
+            <span class="font-black text-yellow-800 dark:text-yellow-400 text-[10px] uppercase tracking-wider">Remarks</span>
         </div>
-        <p class="text-yellow-900 dark:text-yellow-100 text-sm whitespace-pre-wrap leading-relaxed">${remarks}</p>
+        <p class="text-yellow-900 dark:text-yellow-100 text-sm whitespace-pre-wrap font-medium leading-relaxed">${remarks}</p>
     </div>
 `;
 }
 
 htmlContent = `
-<div class="flex flex-col gap-2 border-b border-gray-200 dark:border-zinc-800 pb-4">
+<div class="flex flex-col gap-2 pb-2">
     <div class="flex items-start justify-between gap-2">
-        <h4 class="text-xl md:text-2xl font-black text-gray-900 dark:text-white break-words leading-tight flex-1">${nameStr}</h4>
-        <div class="shrink-0 mt-1">${roleBadge}</div>
+        <h4 class="text-lg md:text-xl font-black text-gray-900 dark:text-white break-words leading-tight flex-1">${nameStr}</h4>
+        <div class="shrink-0 mt-0.5">${roleBadge}</div>
     </div>
-    <div class="flex items-center mt-1">${groupBadge}</div>
+    <div class="flex items-center">${groupBadge}</div>
 </div>
-${detailsHtml}
 ${remarksHtml}
+${detailsHtml}
 `;
 
 const infoContent = document.getElementById('personInfoContent');
