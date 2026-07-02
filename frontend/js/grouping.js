@@ -793,6 +793,8 @@ sortedGroups.forEach((g, index) => {
                       isGroupIC: vObj ? vObj.groupIC === true : false,
                       isMeetIC: vObj ? vObj.meetIC === true : false,
                       isDismissIC: vObj ? vObj.dismissIC === true : false,
+                      meetLoc: vObj ? (vObj.extra?.v_meet || '').trim() : '',
+                      dismissLoc: vObj ? (vObj.extra?.v_dismiss || '').trim() : '',
                       volRemark: vObj ? (vObj.extra?.remarks || vObj.extra?.remark || '') : '',
                       trainees: [],
                       remarks: []
@@ -828,8 +830,14 @@ sortedGroups.forEach((g, index) => {
   rows.forEach(r => {
       let volDisplay = `<span style="font-weight: bold;">${r.name}</span>`;
       if (r.isGroupIC) volDisplay += `<br><strong style="color: #0369a1; font-size: 0.9em; display:inline-block; margin-top:2px;">(Grp ${g} IC)</strong>`;
-      if (r.isMeetIC) volDisplay += `<br><strong style="color: #047857; font-size: 0.9em; display:inline-block; margin-top:2px;">(Meeting IC)</strong>`;
-      if (r.isDismissIC) volDisplay += `<br><strong style="color: #6d28d9; font-size: 0.9em; display:inline-block; margin-top:2px;">(Dismissal IC)</strong>`;
+      if (r.isMeetIC) {
+          const locDisplay = r.meetLoc ? `Meeting - ${r.meetLoc}` : 'Meeting';
+          volDisplay += `<br><strong style="color: #047857; font-size: 0.9em; display:inline-block; margin-top:2px;">(${locDisplay} IC)</strong>`;
+      }
+      if (r.isDismissIC) {
+          const locDisplay = r.dismissLoc ? `Dismissal - ${r.dismissLoc}` : 'Dismissal';
+          volDisplay += `<br><strong style="color: #6d28d9; font-size: 0.9em; display:inline-block; margin-top:2px;">(${locDisplay} IC)</strong>`;
+      }
       
       let tDisplay = r.trainees.length > 0 ? r.trainees.join('<br>') : '-';
       
