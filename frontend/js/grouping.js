@@ -4,17 +4,25 @@ let pendingGroupingUpdates = [];
 let isGroupingSyncing = false;
 let groupingSyncTimeout = null;
 let groupingPollInterval = null;
+let currentGroupingFilter = "ALL";
 let currentGroupingSearch = "";
+let currentGroupingTargetName = "";
 let lastGroupingLocalChange = 0;
-let kanbanGroups = ["1", "2", "3", "4", "5"]; // Pre-populate standard groups
 
 const EXPORT_COLORS = [
-'#fef2f2', '#eff6ff', '#f0fdf4', '#fefce8', 
-'#faf5ff', '#fff7ed', '#f0fdfa', '#fdf2f8', '#eef2ff'
+'#fef2f2', // red-50
+'#eff6ff', // blue-50
+'#f0fdf4', // green-50
+'#fefce8', // yellow-50
+'#faf5ff', // purple-50
+'#fff7ed', // orange-50
+'#f0fdfa', // teal-50
+'#fdf2f8', // pink-50
+'#eef2ff'  // indigo-50
 ];
 
 // ==========================================
-// KANBAN GROUPING CORE
+// MANUAL GROUPING LOGIC (Vertical List UI)
 // ==========================================
 
 function openManualGrouping() {
@@ -25,12 +33,14 @@ if(!url || url.includes("Select") || url.includes("Loading") || url.includes("Er
 currentGroupingSheetUrl = url;
 document.getElementById('navContextTitle').innerText = "Manual Group: " + selector.options[selector.selectedIndex].text;
 
+currentGroupingFilter = "ALL";
 currentGroupingSearch = "";
-document.getElementById('groupingSearchInput').value = "";
-
-// Hide the old filter select to give the search bar full width
 const filterSelect = document.getElementById('groupingFilterSelect');
-if (filterSelect) filterSelect.classList.add('hidden');
+if (filterSelect) {
+    filterSelect.value = "ALL";
+    filterSelect.classList.remove('hidden');
+}
+document.getElementById('groupingSearchInput').value = "";
 
 showView('manual-grouping');
 loadGroupingData();
@@ -44,7 +54,7 @@ apiCall('fetchManualPairingData', { sheetUrl: currentGroupingSheetUrl }).then(re
 overlay.classList.add('hidden');
 if (res.success) {
 groupingData = res.data;
-renderGroupingKanban();
+renderGroupingList();
 startGroupingPolling();
 } else {
 alert("Error: " + res.message);
@@ -53,129 +63,261 @@ showView('comm');
 });
 }
 
+function changeGroupingFilter() {
+currentGroupingFilter = document.getElementById('groupingFilterSelect').value;
+renderGroupingList();
+}
+
 let groupingSearchTimeout = null;
 function changeGroupingSearch() {
 if (groupingSearchTimeout) clearTimeout(groupingSearchTimeout);
 // Debounce search input to prevent rapid UI freezes
 groupingSearchTimeout = setTimeout(() => {
     currentGroupingSearch = document.getElementById('groupingSearchInput').value.toLowerCase().trim();
-    renderGroupingKanban();
+    renderGroupingList();
 }, 300);
 }
 
-// ==========================================
-// RENDER KANBAN UI
-// ==========================================
-
-function renderGroupingKanban() {
+function renderGroupingList() {
 const container = document.getElementById('groupingList');
 
-// Morph the old vertical container into a horizontal flex container
-container.className = "flex-grow overflow-x-auto overflow-y-hidden p-4 flex flex-row gap-4 custom-scrollbar bg-gray-100 dark:bg-black/40 items-start";
-container.innerHTML = '';
+// Restore vertical styling from any possible Kanban modifications
+container.className = "flex-grow overflow-y-auto p-2 md:p-4 space-y-2 custom-scrollbar pb-32 bg-gray-50/50 dark:bg-black/20";
 
-let activeTrainees = (groupingData.trainees || []).filter(t => t.attending === 'y' && !t.isGoneHome);
+// Strictly active trainees
+let activeTrainees = (groupingData.trainees || [])
+.filter(t => t.attending === 'y' && !t.isGoneHome);
 
-// Detect dynamically created groups in the data
-let groupSet = new Set(kanbanGroups);
-activeTrainees.forEach(t => {
-const g = String(t.group || "").trim();
-if (g) groupSet.add(g);
+let groupSet = new Set();
+activeTrainees.forEach(item => {
+let g = String(item.group || "").trim();
+if (g !== "") groupSet.add(g);
 });
-kanbanGroups = Array.from(groupSet).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
 
-// Search Filtering
+let groups = Array.from(groupSet).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+
+const filterSelect = document.getElementById('groupingFilterSelect');
+if (filterSelect) {
+    let filterHtml = `<option value="ALL">All Groups</option><option value="UNASSIGNED">Unassigned</option>`;
+    groups.forEach(g => {
+        filterHtml += `<option value="${g}">Group ${g}</option>`;
+    });
+    filterSelect.innerHTML = filterHtml;
+
+    if (["ALL", "UNASSIGNED", ...groups].includes(currentGroupingFilter)) {
+        filterSelect.value = currentGroupingFilter;
+    } else {
+        currentGroupingFilter = "ALL";
+        filterSelect.value = "ALL";
+    }
+}
+
 if (currentGroupingSearch) {
 activeTrainees = activeTrainees.filter(item => {
-    return item.name.toLowerCase().includes(currentGroupingSearch) || 
-           (item.volPaired && item.volPaired.toLowerCase().includes(currentGroupingSearch));
+const nameMatch = item.name.toLowerCase().includes(currentGroupingSearch);
+const volMatch = item.volPaired && item.volPaired.toLowerCase().includes(currentGroupingSearch);
+const groupMatch = String(item.group || "").toLowerCase().includes(currentGroupingSearch);
+return nameMatch || volMatch || groupMatch;
 });
 }
 
-// Columns Setup
-const cols = ["UNASSIGNED", ...kanbanGroups];
-let html = '';
+if (currentGroupingFilter === "UNASSIGNED") {
+activeTrainees = activeTrainees.filter(item => String(item.group || "").trim() === "");
+} else if (currentGroupingFilter !== "ALL") {
+activeTrainees = activeTrainees.filter(item => String(item.group || "").trim() === currentGroupingFilter);
+}
 
-cols.forEach(g => {
-const isUnassigned = g === "UNASSIGNED";
-const title = isUnassigned ? "Unassigned" : `Group ${g}`;
-const dropTarget = isUnassigned ? "UNASSIGNED" : g;
-const headerColor = isUnassigned ? "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/40 dark:text-red-300" : "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300";
+activeTrainees.sort((a, b) => {
+const groupA = String(a.group || "").trim();
+const groupB = String(b.group || "").trim();
 
-const colTrainees = activeTrainees.filter(t => isUnassigned ? String(t.group||"").trim() === "" : String(t.group||"").trim() === g);
+if (groupA === "" && groupB !== "") return -1;
+if (groupA !== "" && groupB === "") return 1;
 
-// Sort alphabetically within columns
-colTrainees.sort((a,b) => a.name.localeCompare(b.name));
+if (groupA !== groupB) {
+const numA = parseInt(groupA);
+const numB = parseInt(groupB);
+// Strict Weak Ordering fix to prevent infinite loops in V8 engine
+if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+    return numA - numB;
+}
+return groupA.localeCompare(groupB, undefined, {numeric: true});
+}
 
-let cardsHtml = '';
-colTrainees.forEach(t => {
-    const safeName = t.name.replace(/'/g, "\\'");
-    
-    let volBadge = '';
-    if (t.volPaired) {
-        volBadge = `<div class="mt-2 text-[10px] text-teal-600 dark:text-teal-400 font-bold leading-tight bg-teal-50 dark:bg-teal-900/30 px-1.5 py-0.5 rounded border border-teal-200 dark:border-teal-800/50 inline-block"><i class="fa-solid fa-handshake-angle mr-1"></i>${t.volPaired}</div>`;
-    } else {
-        volBadge = `<div class="mt-2 text-[9px] uppercase tracking-wider text-red-500 font-black bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded inline-block"><i class="fa-solid fa-circle-exclamation mr-1"></i>Unpaired</div>`;
-    }
-
-    let extras = '';
-    if (t.extra?.t_one_on_one?.toLowerCase() === 'y' || t.extra?.t_one_on_one?.toLowerCase() === 'yes') {
-        extras += `<i class="fa-solid fa-star text-yellow-500 text-[10px] ml-1" title="1-1 Required"></i>`;
-    }
-    if (t.extra?.remark) {
-        extras += `<i class="fa-solid fa-note-sticky text-yellow-500 text-[10px] ml-1 cursor-help" title="${t.extra.remark}"></i>`;
-    }
-
-    cardsHtml += `
-    <div class="dnd-draggable bg-white dark:bg-zinc-800 p-3 rounded-lg border border-gray-200 dark:border-zinc-700 shadow-sm cursor-grab active:cursor-grabbing hover:border-primary transition relative group" data-name="${safeName}" data-role="TRAINEE">
-        <div class="flex justify-between items-start gap-1 w-full">
-            <div class="main-name-pill text-xs md:text-sm font-black text-gray-900 dark:text-white leading-tight break-words flex-1">
-                ${t.name} ${extras}
-            </div>
-            <div class="flex gap-2 items-center shrink-0">
-                <button onclick="promptMoveGroup('${safeName}')" class="text-gray-300 hover:text-orange-500 transition-colors md:hidden bg-gray-50 dark:bg-black rounded px-1.5 py-0.5 border border-gray-200 dark:border-zinc-700"><i class="fa-solid fa-arrows-up-down-left-right text-[10px]"></i></button>
-                <button onclick="showPersonInfoFromKanban('${safeName}')" class="text-gray-300 hover:text-blue-500 transition-colors"><i class="fa-solid fa-circle-info text-sm"></i></button>
-            </div>
-        </div>
-        ${volBadge}
-    </div>
-    `;
+return a.name.localeCompare(b.name);
 });
 
+let html = '';
+
+if (activeTrainees.length === 0) {
+html = `<div class="p-4 text-center text-gray-500 dark:text-gray-400 font-bold text-xs italic">No trainees match the current filters.</div>`;
+} else {
+activeTrainees.forEach(item => {
+const groupStr = String(item.group || "").trim();
+const groupBadgeClass = groupStr !== "" 
+    ? `bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800` 
+    : `bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50`;
+    
+const roleBadge = `<span class="bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 px-1 py-0.5 rounded text-[8px] uppercase font-black tracking-wider shadow-sm">Trainee</span>`;
+
+let subInfo = '';
+if (item.volPaired) {
+    subInfo = `<div class="text-[10px] text-teal-600 dark:text-teal-400 font-bold line-clamp-2 mt-1"><i class="fa-solid fa-handshake-angle opacity-80 mr-1"></i>${item.volPaired}</div>`;
+}
+
+// 1-1 Pairing Star logic
+let starBadge = '';
+if (item.extra && item.extra.t_one_on_one) {
+    const oneOnOneRaw = String(item.extra.t_one_on_one).trim().toLowerCase();
+    if (oneOnOneRaw === 'yes' || oneOnOneRaw === 'y' || oneOnOneRaw === 'true') {
+        starBadge = `<i class="fa-solid fa-star text-yellow-500 shrink-0 text-xs ml-1" title="1-1 Pairing Required"></i>`;
+    }
+}
+
+// Remarks Badge logic
+let remarksBadge = '';
+let remarkContent = null;
+if (item.extra && item.extra.remark) {
+    remarkContent = String(item.extra.remark).trim();
+}
+if (remarkContent) {
+    remarksBadge = `<i class="fa-solid fa-note-sticky text-yellow-500 dark:text-yellow-400 shrink-0 text-xs ml-1 cursor-help" title="${remarkContent.replace(/"/g, '&quot;')}"></i>`;
+}
+
+const safeName = item.name.replace(/'/g, "\\'");
+
+// Card triggers single press for QuickGroup, Long Press for Info
 html += `
-<div class="dnd-dropzone flex flex-col w-[260px] md:w-[300px] shrink-0 h-full bg-gray-50/80 dark:bg-zinc-900/80 rounded-xl border border-gray-300 dark:border-zinc-700 shadow-sm transition-all" data-grouptarget="${dropTarget}">
-    <div class="p-3 border-b ${headerColor} rounded-t-xl font-black flex justify-between items-center shadow-sm shrink-0">
-        <span class="tracking-wide uppercase text-sm">${title}</span>
-        <span class="text-[10px] bg-white/60 dark:bg-black/50 text-gray-900 dark:text-white font-black rounded-full px-2.5 py-0.5 shadow-inner">${colTrainees.length}</span>
-    </div>
-    <div class="p-2.5 flex-grow overflow-y-auto space-y-2.5 custom-scrollbar pb-10">
-        ${cardsHtml || `<div class="text-center p-4 text-xs font-bold text-gray-400 italic pointer-events-none border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-lg">Drop trainees here</div>`}
+<div class="grouping-card bg-white dark:bg-zinc-900 p-3 rounded-lg border border-gray-200 dark:border-zinc-700 shadow-sm cursor-pointer hover:border-orange-500 transition active:scale-[0.98] select-none" data-name="${safeName}" onclick="openQuickGroupModal('${safeName}')">
+    <div class="flex justify-between items-start w-full gap-2">
+        <div class="flex flex-col gap-1 min-w-0 flex-1 pointer-events-none">
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1 min-w-0">
+                    <span class="font-extrabold text-xs md:text-sm text-gray-900 dark:text-white leading-tight truncate">${item.name}</span>
+                    ${starBadge}
+                    ${remarksBadge}
+                </div>
+                ${roleBadge}
+            </div>
+            ${subInfo}
+        </div>
+        <div class="shrink-0 flex items-center justify-end pointer-events-none">
+            <span class="${groupBadgeClass} border px-2 py-0.5 rounded font-black text-[10px] uppercase shadow-sm">${groupStr ? `Grp ${groupStr}` : 'Unassigned'}</span>
+        </div>
     </div>
 </div>
 `;
 });
-
-// Add "New Group" column button
-html += `
-<div class="w-[260px] md:w-[300px] shrink-0 h-full flex flex-col pt-0">
-<button onclick="promptNewGroup()" class="bg-transparent border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-xl w-full h-32 text-gray-500 dark:text-gray-400 font-bold hover:border-orange-500 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all flex flex-col items-center justify-center gap-2">
-    <i class="fa-solid fa-plus text-2xl"></i>
-    <span class="text-xs uppercase tracking-wider">Add New Group</span>
-</button>
-</div>`;
+}
 
 container.innerHTML = html;
-}
 
-// Helper to open standard info modal from kanban cards
-function showPersonInfoFromKanban(name) {
-const p = (groupingData.trainees || []).find(x => x.name === name);
-if (p) showPersonInfo(p);
+// Bind Long Press globally to items
+document.querySelectorAll('.grouping-card').forEach(el => {
+uiBindLongPress(el, () => {
+    const name = el.getAttribute('data-name');
+    const p = (groupingData.trainees || []).find(x => x.name.replace(/'/g, "\\'") === name);
+    if (p) showPersonInfo(p);
+});
+});
 }
 
 // ==========================================
-// DRAG AND DROP HANDLER & ALGORITHM
+// QUICK GROUP MODAL (Vertical List Logic)
 // ==========================================
+
+function openQuickGroupModal(name) {
+currentGroupingTargetName = name;
+
+const title = document.getElementById('quickGroupModalTitle');
+if (title) title.innerHTML = `Assign <span class="text-orange-500">${name}</span>`;
+
+const grid = document.getElementById('quickGroupGrid');
+
+let currentGroup = "";
+const t = groupingData.trainees.find(x => x.name === name);
+if(t) currentGroup = String(t.group || "").trim();
+
+let activeTrainees = (groupingData.trainees || []).filter(tr => tr.attending === 'y');
+
+let highest = 0;
+let groupSet = new Set();
+
+activeTrainees.forEach(tr => {
+const g = String(tr.group || "").trim();
+if (g !== "") {
+groupSet.add(g);
+const num = parseInt(g);
+if (!isNaN(num) && num > highest) highest = num;
+}
+});
+
+let groups = Array.from(groupSet).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+
+let gridHtml = '';
+groups.forEach(g => {
+const isCurrent = g === currentGroup;
+gridHtml += `
+<button onclick="handleGroupSelection('${g}')" class="py-3 px-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition ${isCurrent ? 'bg-orange-100 border-orange-500 text-orange-800 dark:bg-orange-900/50 dark:border-orange-500 dark:text-orange-200' : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-orange-50 hover:border-orange-300 dark:bg-black dark:border-zinc-700 dark:text-gray-300 dark:hover:bg-zinc-800'}">
+<span class="text-[10px] font-bold uppercase opacity-80 leading-none">Group</span>
+<span class="text-lg font-black leading-none">${g}</span>
+</button>
+`;
+});
+
+if (grid) grid.innerHTML = gridHtml || `<div class="col-span-3 text-center text-xs text-gray-500 p-2">No groups exist yet.</div>`;
+
+const modal = document.getElementById('quickGroupModal');
+if (modal) modal.classList.remove('hidden');
+}
+
+function closeQuickGroupModal() {
+const modal = document.getElementById('quickGroupModal');
+if (modal) modal.classList.add('hidden');
+}
+
+function handleNewGroupSelection() {
+const newGroup = prompt("Enter new group name/number:");
+if (newGroup !== null && newGroup.trim() !== "") {
+handleGroupSelection(newGroup.trim());
+}
+}
+
+function triggerGroupingPulse(namesArray, isAssigned) {
+setTimeout(() => {
+   requestAnimationFrame(() => {
+       let hasScrolled = false;
+       namesArray.forEach(name => {
+           const safeName = name.replace(/'/g, "\\'");
+           const card = document.querySelector(`.grouping-card[data-name="${safeName}"]`);
+           if (card) {
+               const container = document.getElementById('groupingList');
+               if (container && !hasScrolled) {
+                   const containerRect = container.getBoundingClientRect();
+                   const cardRect = card.getBoundingClientRect();
+                   
+                   if (cardRect.height > 0) {
+                       if (cardRect.top < containerRect.top || cardRect.bottom > containerRect.bottom) {
+                           const scrollTop = container.scrollTop + (cardRect.top - containerRect.top) - (containerRect.height / 2) + (cardRect.height / 2);
+                           container.scrollTo({
+                               top: scrollTop,
+                               behavior: 'smooth'
+                           });
+                           hasScrolled = true;
+                       }
+                   }
+               }
+               
+               const pulseClass = isAssigned ? 'pulse-green' : 'pulse-red';
+               card.classList.add(pulseClass);
+               setTimeout(() => {
+                   card.classList.remove(pulseClass);
+               }, 800);
+           }
+       });
+   });
+}, 150);
+}
 
 // Safe Breadth-First-Search Algorithm to resolve connected trainees instantly
 function getConnectedTrainees(startName) {
@@ -202,21 +344,27 @@ groupingData.trainees.forEach(otherT => {
 return Array.from(connected);
 }
 
-// Fired natively by dnd.js
-function handleGroupingDrop(traineeName, targetGroupRaw) {
+function handleGroupSelection(targetGroupRaw) {
 const targetGroup = targetGroupRaw === "UNASSIGNED" ? "" : targetGroupRaw;
+const name = currentGroupingTargetName;
+
 lastGroupingLocalChange = Date.now();
 
-// 1. Resolve all trainees sharing volunteers
-const connectedTrainees = getConnectedTrainees(traineeName);
+let trainee = groupingData.trainees.find(t => t.name === name);
+if (!trainee) { closeQuickGroupModal(); return; }
+
+const currentGroup = String(trainee.group || "").trim();
+if (currentGroup === targetGroup) { closeQuickGroupModal(); return; }
+
+// Use safe Breadth-First-Search to pull connected trainees if a group is assigned
+const traineesToMove = targetGroup !== "" && trainee.volPaired ? getConnectedTrainees(name) : [name];
 
 let changed = false;
-connectedTrainees.forEach(tName => {
+traineesToMove.forEach(tName => {
 let t = groupingData.trainees.find(x => x.name === tName);
 if (t && String(t.group).trim() !== targetGroup) {
     t.group = targetGroup;
     changed = true;
-    
     const updateIndex = pendingGroupingUpdates.findIndex(u => u.name === tName && u.role === 'TRAINEE');
     if (updateIndex > -1) {
         pendingGroupingUpdates[updateIndex].group = targetGroup;
@@ -227,45 +375,16 @@ if (t && String(t.group).trim() !== targetGroup) {
 });
 
 if (changed) {
-if (targetGroup !== "" && !kanbanGroups.includes(targetGroup)) {
-    kanbanGroups.push(targetGroup);
+if (traineesToMove.length > 1 && targetGroup !== "") {
+    showFlashMessage('groupingGlobalStatus', `Auto-Grouped ${traineesToMove.length} trainees due to shared volunteers.`, 'success');
 }
-
-if (connectedTrainees.length > 1 && targetGroup !== "") {
-    showFlashMessage('groupingGlobalStatus', `Auto-Grouped ${connectedTrainees.length} trainees due to shared volunteers.`, 'success');
-}
-
-renderGroupingKanban();
+renderGroupingList();
+const isAssigned = targetGroup !== "";
+triggerGroupingPulse(traineesToMove, isAssigned);
 triggerGroupingSync();
 }
+closeQuickGroupModal();
 }
-
-// Mobile fallback manual move prompt
-function promptMoveGroup(traineeName) {
-const g = prompt(`Move ${traineeName} to which group number? \n(Leave empty to Unassign)`);
-if (g !== null) {
-handleGroupingDrop(traineeName, g.trim() === "" ? "UNASSIGNED" : g.trim());
-}
-}
-
-function promptNewGroup() {
-const g = prompt("Enter new Group Name or Number:");
-if (g && g.trim()) {
-const cleanName = g.trim();
-if (!kanbanGroups.includes(cleanName)) {
-    kanbanGroups.push(cleanName);
-    renderGroupingKanban();
-    
-    // Smooth scroll to the end to see the new group
-    const container = document.getElementById('groupingList');
-    setTimeout(() => { container.scrollTo({ left: container.scrollWidth, behavior: 'smooth' }); }, 50);
-}
-}
-}
-
-// ==========================================
-// SYNC ENGINE
-// ==========================================
 
 function setGroupingSyncButtonState(state) {
 const btn = document.getElementById('btn-sync-manual-grouping');
@@ -339,8 +458,10 @@ groupingPollInterval = setInterval(async () => {
 const view = document.getElementById('view-manual-grouping');
 if(!view || view.classList.contains('hidden') || isGroupingSyncing || (dndState && (dndState.el || dndState.isDragging))) return;
 
-// Lockout polling if the user is typing in the search box to prevent UI disruption
+// Lockout polling if the user is typing in the search box to prevent layout interruption
 if (document.activeElement && document.activeElement.id === 'groupingSearchInput') return;
+const modal = document.getElementById('quickGroupModal');
+if (modal && !modal.classList.contains('hidden')) return;
 
 if (pendingGroupingUpdates.length > 0) return;
 
@@ -356,7 +477,7 @@ if(res.success && !isGroupingSyncing && pendingGroupingUpdates.length === 0) {
   
   if (newDataStr !== oldDataStr) {
       groupingData = res.data;
-      renderGroupingKanban();
+      renderGroupingList();
   }
 }
 } catch(e) { }
@@ -381,7 +502,7 @@ if (res.success) {
 if (lastGroupingLocalChange > fetchStartTime) return;
 
 groupingData = res.data;
-renderGroupingKanban();
+renderGroupingList();
 setGroupingSyncButtonState('saved');
 } else {
 setGroupingSyncButtonState('error');
@@ -393,7 +514,7 @@ setGroupingSyncButtonState('error');
 }
 
 // ==========================================
-// ASSIGN ICs MODAL LOGIC
+// ASSIGN ICs MODAL LOGIC (Groups, Meet, Dismiss)
 // ==========================================
 
 function openAssignICModal(sheetUrl) {
