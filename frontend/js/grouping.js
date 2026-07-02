@@ -701,13 +701,14 @@ sortedGroups.forEach((g, index) => {
                    volMap.set(vKey, {
                        name: vObj ? vObj.name : v, 
                        isIC: vObj ? vObj.groupIC === true : false,
+                       volRemark: vObj ? (vObj.extra?.remarks || vObj.extra?.remark || '') : '',
                        trainees: [],
                        remarks: []
                    });
                }
                const vData = volMap.get(vKey);
                vData.trainees.push(t.name);
-               if (remarks) vData.remarks.push(`${t.name}: ${remarks}`);
+               if (remarks) vData.remarks.push(`<strong>[Trn] ${t.name}:</strong> ${remarks}`);
            });
        } else {
            unpairedTrainees.push({ name: t.name, remarks: remarks });
@@ -735,7 +736,11 @@ sortedGroups.forEach((g, index) => {
        if (r.isIC) volDisplay += `<br><strong style="color: #0369a1; font-size: 0.9em;">(Grp ${g} IC)</strong>`;
        
        let tDisplay = r.trainees.length > 0 ? r.trainees.join('<br>') : '-';
-       let rDisplay = r.remarks.join('<br><br>');
+       
+       let allRemarks = [];
+       if (r.volRemark) allRemarks.push(`<strong>[Vol] ${r.name}:</strong> ${r.volRemark}`);
+       if (r.remarks.length > 0) allRemarks = allRemarks.concat(r.remarks);
+       let rDisplay = allRemarks.join('<br><br>');
        
        html += `<tr style="background-color: ${bgColor};">
            <td style="padding: 3px; border: 1px solid #ccc; vertical-align: middle;">${volDisplay}</td>
@@ -746,11 +751,12 @@ sortedGroups.forEach((g, index) => {
    });
    
    unpairedTrainees.forEach(ut => {
+       let rDisplay = ut.remarks ? `<strong>[Trn] ${ut.name}:</strong> ${ut.remarks}` : '';
        html += `<tr style="background-color: ${bgColor};">
            <td style="padding: 3px; border: 1px solid #ccc; font-weight: bold; color: #dc2626; text-align: center; vertical-align: middle;">-</td>
            <td style="padding: 3px; border: 1px solid #ccc; vertical-align: middle;">${ut.name}</td>
            <td style="padding: 3px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle;">${g}</td>
-           <td contenteditable="true" style="padding: 3px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${ut.remarks}</td>
+           <td contenteditable="true" style="padding: 3px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
        </tr>`;
    });
 });
