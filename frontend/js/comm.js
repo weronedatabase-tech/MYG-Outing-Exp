@@ -41,8 +41,8 @@ document.getElementById('manualGroupBtn').disabled = true;
 document.getElementById('manualGroupBtn').classList.add('opacity-50', 'cursor-not-allowed');
 const assignBtn = document.getElementById('assignICBtn');
 if (assignBtn) {
-  assignBtn.disabled = true;
-  assignBtn.classList.add('opacity-50', 'cursor-not-allowed');
+ assignBtn.disabled = true;
+ assignBtn.classList.add('opacity-50', 'cursor-not-allowed');
 }
 
 } else if (viewId === 'actual-attendance') {
@@ -85,60 +85,78 @@ document.getElementById('manualGroupBtn').disabled = false;
 document.getElementById('manualGroupBtn').classList.remove('opacity-50', 'cursor-not-allowed');
 const assignBtn = document.getElementById('assignICBtn');
 if (assignBtn) {
-  assignBtn.disabled = false;
-  assignBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+ assignBtn.disabled = false;
+ assignBtn.classList.remove('opacity-50', 'cursor-not-allowed');
 }
 
 let allCards = '';
 res.data.forEach((item, index) => {
 allCards += `
 <div class="flex flex-col gap-2 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm relative transition-colors">
-  <div class="flex justify-between items-start">
-    <div>
-        <div class="font-bold text-gray-900 dark:text-white text-sm">${item.displayName}</div>
-        <div class="text-gray-500 dark:text-gray-400 text-xs">${item.formattedDate}</div>
-        <div id="pending-badge-${index}" class="mt-1 hidden"></div>
-    </div>
-    <div class="flex gap-2 text-xs">
-        <button onclick="openEditOutingModal(${index})" class="p-2 bg-gray-100 dark:bg-zinc-800 rounded text-purple-500 dark:text-purple-400 hover:text-purple-600 dark:hover:text-purple-300 transition-colors" title="Edit Outing"><i class="fa-solid fa-pen text-base"></i></button>
-        <a href="${item.folderUrl}" target="_blank" class="p-2 bg-gray-100 dark:bg-zinc-800 rounded text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors"><i class="fa-regular fa-folder-open text-base"></i></a>
-        <a href="${item.sheetUrl}" target="_blank" class="p-2 bg-gray-100 dark:bg-zinc-800 rounded text-green-500 dark:text-green-400 hover:text-green-600 dark:hover:text-green-300 transition-colors"><i class="fa-regular fa-file-excel text-base"></i></a>
-    </div>
-  </div>
-  <div id="stats-${index}" class="text-xs text-gray-400 dark:text-gray-500 animate-pulse mt-2">Loading stats...</div>
-  <div id="btn-group-${index}" class="hidden grid grid-cols-3 gap-1.5 md:gap-2 mt-2 pt-3 border-t border-gray-100 dark:border-zinc-800">
-      <button onclick="openReminderModal('${index}')" class="bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 py-1.5 px-1 rounded border border-gray-200 dark:border-zinc-700 transition-colors flex items-center justify-center gap-1 overflow-hidden" title="Remind">
-         <i class="fa-solid fa-bell text-sm md:text-base shrink-0"></i>
-         <span class="text-[10px] md:text-[11px] font-semibold truncate">Remind</span>
-      </button>
-      <button onclick="copyOutingMessage('${index}', this)" class="bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 py-1.5 px-1 rounded border border-gray-200 dark:border-zinc-700 transition-colors flex items-center justify-center gap-1 overflow-hidden" title="Copy Info">
-         <i class="fa-regular fa-copy text-sm md:text-base shrink-0"></i>
-         <span class="text-[10px] md:text-[11px] font-semibold truncate">Copy Info</span>
-      </button>
-      <button onclick="openShareTableFromComm('${item.sheetUrl}')" class="bg-gray-50 dark:bg-zinc-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 py-1.5 px-1 rounded border border-gray-200 dark:border-zinc-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors flex items-center justify-center gap-1 overflow-hidden" title="Share Pairing/Grouping Screenshot">
-         <i class="fa-solid fa-share-nodes text-sm md:text-base shrink-0"></i>
-         <span class="text-[9px] md:text-[11px] font-semibold leading-tight text-center whitespace-normal">Share Pairing/Grouping Screenshot</span>
-      </button>
-  </div>
+ <div class="flex justify-between items-start">
+   <div>
+       <div class="font-bold text-gray-900 dark:text-white text-sm">${item.displayName}</div>
+       <div class="text-gray-500 dark:text-gray-400 text-xs">${item.formattedDate}</div>
+       <div id="pending-badge-${index}" class="mt-1 hidden"></div>
+   </div>
+   <div class="flex gap-2 text-xs">
+       <button onclick="openEditOutingModal(${index})" class="p-2 bg-gray-100 dark:bg-zinc-800 rounded text-purple-500 dark:text-purple-400 hover:text-purple-600 dark:hover:text-purple-300 transition-colors" title="Edit Outing"><i class="fa-solid fa-pen text-base"></i></button>
+       <a href="${item.folderUrl}" target="_blank" class="p-2 bg-gray-100 dark:bg-zinc-800 rounded text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors"><i class="fa-regular fa-folder-open text-base"></i></a>
+       <a href="${item.sheetUrl}" target="_blank" class="p-2 bg-gray-100 dark:bg-zinc-800 rounded text-green-500 dark:text-green-400 hover:text-green-600 dark:hover:text-green-300 transition-colors"><i class="fa-regular fa-file-excel text-base"></i></a>
+   </div>
+ </div>
+ <div id="stats-${index}" class="text-xs text-gray-400 dark:text-gray-500 animate-pulse mt-2">Loading stats...</div>
+ <div id="btn-group-${index}" class="hidden grid grid-cols-3 gap-1.5 md:gap-2 mt-2 pt-3 border-t border-gray-100 dark:border-zinc-800">
+     <button onclick="openReminderModal('${index}')" class="bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 py-1.5 px-1 rounded border border-gray-200 dark:border-zinc-700 transition-colors flex items-center justify-center gap-1 overflow-hidden" title="Remind">
+        <i class="fa-solid fa-bell text-sm md:text-base shrink-0"></i>
+        <span class="text-[10px] md:text-[11px] font-semibold truncate">Remind</span>
+     </button>
+     <button onclick="copyOutingMessage('${index}', this)" class="bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 py-1.5 px-1 rounded border border-gray-200 dark:border-zinc-700 transition-colors flex items-center justify-center gap-1 overflow-hidden" title="Copy Info">
+        <i class="fa-regular fa-copy text-sm md:text-base shrink-0"></i>
+        <span class="text-[10px] md:text-[11px] font-semibold truncate">Copy Info</span>
+     </button>
+     <button onclick="openShareTableFromComm('${item.sheetUrl}')" class="bg-gray-50 dark:bg-zinc-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 py-1.5 px-1 rounded border border-gray-200 dark:border-zinc-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors flex items-center justify-center gap-1 overflow-hidden" title="Share Pairing/Grouping Screenshot">
+        <i class="fa-solid fa-share-nodes text-sm md:text-base shrink-0"></i>
+        <span class="text-[9px] md:text-[11px] font-semibold leading-tight text-center whitespace-normal">Share Pairing/Grouping Screenshot</span>
+     </button>
+ </div>
 </div>`;
 });
 listContainer.innerHTML = allCards;
 
 // BATCH FETCHING STATS TO PREVENT UI QUOTA STACKING
 let currentIndex = 0;
+const MAX_STATS_TO_FETCH = 6; // Cap at 6 to prevent API barrage
 const fetchBatchStats = () => {
-  const batch = res.data.slice(currentIndex, currentIndex + 3);
-  if (batch.length === 0) return;
-  
-  Promise.all(batch.map((item, localIdx) => {
-      const globalIdx = currentIndex + localIdx;
-      return fetchOutingStats(item.sheetUrl, globalIdx);
-  })).then(() => {
-      currentIndex += 3;
-      if (currentIndex < res.data.length) {
-          setTimeout(fetchBatchStats, 150);
-      }
-  });
+ const batch = res.data.slice(currentIndex, currentIndex + 2); // Reduced batch size
+ if (batch.length === 0 || currentIndex >= MAX_STATS_TO_FETCH) {
+     for (let i = currentIndex; i < res.data.length; i++) {
+         const container = document.getElementById(`stats-${i}`);
+         if (container) {
+             container.innerHTML = '<span class="text-gray-400 italic text-[10px]">Stats skipped to preserve quota</span>';
+             container.classList.remove('animate-pulse');
+         }
+     }
+     return;
+ }
+ 
+ Promise.all(batch.map((item, localIdx) => {
+     const globalIdx = currentIndex + localIdx;
+     return fetchOutingStats(item.sheetUrl, globalIdx);
+ })).then(() => {
+     currentIndex += 2;
+     if (currentIndex < Math.min(res.data.length, MAX_STATS_TO_FETCH)) {
+         setTimeout(fetchBatchStats, 1500); // Heavily spaced delay
+     } else {
+         for (let i = currentIndex; i < res.data.length; i++) {
+             const container = document.getElementById(`stats-${i}`);
+             if (container) {
+                 container.innerHTML = '<span class="text-gray-400 italic text-[10px]">Stats skipped to preserve quota</span>';
+                 container.classList.remove('animate-pulse');
+             }
+         }
+     }
+ });
 };
 fetchBatchStats();
 
@@ -295,11 +313,11 @@ showOverlay('loading', 'Generating Table...');
 apiCall('fetchManualPairingData', { sheetUrl: sheetUrl }).then(res => {
 closeOverlay();
 if (res.success) {
-    groupingData = res.data;
-    currentGroupingSheetUrl = sheetUrl; // Bind globally for image export Context
-    openTableExportModal();
+   groupingData = res.data;
+   currentGroupingSheetUrl = sheetUrl; // Bind globally for image export Context
+   openTableExportModal();
 } else {
-    alert("Error: " + res.message);
+   alert("Error: " + res.message);
 }
 });
 }
@@ -416,12 +434,12 @@ dismissalTimes: Array.from(document.getElementsByName('editDismissalTime')).map(
 
 apiCall('updateOuting', { sheetUrl: currentEditSheetUrl, form: formData }).then(res => { 
 if(res.success) { 
-    showOverlay('success', 'Outing Details Updated!');
-    closeEditModal(); 
-    loadSheets('comm'); 
-    showFlashMessage('commGlobalStatus', "Outing Updated Successfully!", 'success');
+   showOverlay('success', 'Outing Details Updated!');
+   closeEditModal(); 
+   loadSheets('comm'); 
+   showFlashMessage('commGlobalStatus', "Outing Updated Successfully!", 'success');
 } else { 
-    showOverlay('error', res.message);
+   showOverlay('error', res.message);
 } 
 }); 
 }
@@ -517,7 +535,7 @@ html += `
 <div class="px-3 py-2 border-b border-gray-100 dark:border-zinc-800 last:border-0 hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer flex items-center justify-between transition-colors" onclick="toggleCommAttFilterItem('${type}', '${item.replace(/'/g, "\\'")}', event)">
 <span class="text-xs text-gray-700 dark:text-gray-300 font-bold break-words pr-2">${type === 'group' ? 'Grp ' + item : item}</span>
 <div class="w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isChecked ? 'bg-blue-500 border-blue-600 text-white' : 'bg-gray-100 border-gray-300 dark:bg-black dark:border-zinc-600 text-transparent'}">
-  <i class="fa-solid fa-check text-[10px]"></i>
+ <i class="fa-solid fa-check text-[10px]"></i>
 </div>
 </div>`;
 });
@@ -556,12 +574,12 @@ commAttFiltersChanged = false;
 
 document.addEventListener('click', function(e) {
 const isDropdownClick = e.target.closest('#commAttGroupDropdown') || 
-          e.target.closest('#commAttMeetDropdown') || 
-          e.target.closest('#commAttDismissDropdown');
+         e.target.closest('#commAttMeetDropdown') || 
+         e.target.closest('#commAttDismissDropdown');
 
 const isBtnClick = e.target.closest('#commAttGroupBtn') || 
-     e.target.closest('#commAttMeetBtn') || 
-     e.target.closest('#commAttDismissBtn');
+    e.target.closest('#commAttMeetBtn') || 
+    e.target.closest('#commAttDismissBtn');
 
 if (!isDropdownClick && !isBtnClick) {
 closeAllCommAttFilters();
@@ -842,30 +860,30 @@ const card = document.getElementById(id);
 if (card) {
 const container = card.parentElement;
 if (container) {
-  const containerRect = container.getBoundingClientRect();
-  const cardRect = card.getBoundingClientRect();
-  
-  if (cardRect.height > 0) {
-      const scrollTop = container.scrollTop + (cardRect.top - containerRect.top) - (containerRect.height / 2) + (cardRect.height / 2);
-      
-      container.scrollTo({
-          top: scrollTop,
-          behavior: 'smooth'
-      });
-  }
+ const containerRect = container.getBoundingClientRect();
+ const cardRect = card.getBoundingClientRect();
+ 
+ if (cardRect.height > 0) {
+     const scrollTop = container.scrollTop + (cardRect.top - containerRect.top) - (containerRect.height / 2) + (cardRect.height / 2);
+     
+     container.scrollTo({
+         top: scrollTop,
+         behavior: 'smooth'
+     });
+ }
 }
 
 let pulseClass = 'pulse-red';
 
 if (stateType === 'checked') {
-  pulseClass = 'pulse-green';
+ pulseClass = 'pulse-green';
 } else if (stateType === 'gonehome') {
-  pulseClass = 'pulse-blue';
+ pulseClass = 'pulse-blue';
 }
 
 card.classList.add(pulseClass);
 setTimeout(() => {
-  card.classList.remove(pulseClass);
+ card.classList.remove(pulseClass);
 }, 800);
 }
 });
