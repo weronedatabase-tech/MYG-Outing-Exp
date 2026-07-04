@@ -57,10 +57,31 @@ const selector = document.getElementById(selectorId);
 const spinner = document.getElementById(loadingId);
 const listContainer = document.getElementById('upcomingList');
 
-selector.innerHTML = '<option disabled selected>↻ Searching events...</option>';
+selector.innerHTML = '<option disabled selected>↻ Loading events...</option>';
 selector.disabled = true;
 if(spinner) spinner.classList.remove('hidden');
-if(viewId === 'comm' && listContainer) listContainer.innerHTML = '<p class="text-xs italic text-gray-500 dark:text-gray-400"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading events...</p>';
+
+// Implement Skeleton UI for Perceived Performance on Load
+if(viewId === 'comm' && listContainer) {
+let skeletonHtml = '';
+for(let i=0; i<3; i++) {
+    skeletonHtml += `
+    <div class="animate-pulse flex flex-col gap-3 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm">
+        <div class="flex justify-between items-start">
+            <div class="space-y-2 w-1/2">
+                <div class="h-4 bg-gray-200 dark:bg-zinc-800 rounded w-3/4"></div>
+                <div class="h-3 bg-gray-100 dark:bg-zinc-800/60 rounded w-1/2"></div>
+            </div>
+            <div class="flex gap-2">
+                <div class="w-8 h-8 bg-gray-200 dark:bg-zinc-800 rounded"></div>
+                <div class="w-8 h-8 bg-gray-200 dark:bg-zinc-800 rounded"></div>
+            </div>
+        </div>
+        <div class="h-12 bg-gray-50 dark:bg-zinc-800/50 rounded w-full mt-1"></div>
+    </div>`;
+}
+listContainer.innerHTML = skeletonHtml;
+}
 
 apiCall('getRecentOutingSheets', null).then(res => {
 if(spinner) spinner.classList.add('hidden');
@@ -105,7 +126,7 @@ allCards += `
        <a href="${item.sheetUrl}" target="_blank" class="p-2 bg-gray-100 dark:bg-zinc-800 rounded text-green-500 dark:text-green-400 hover:text-green-600 dark:hover:text-green-300 transition-colors"><i class="fa-regular fa-file-excel text-base"></i></a>
    </div>
  </div>
- <div id="stats-${index}" class="text-xs text-gray-400 dark:text-gray-500 animate-pulse mt-2">Loading stats...</div>
+ <div id="stats-${index}" class="animate-pulse mt-2"><div class="h-12 bg-gray-100 dark:bg-zinc-800 rounded w-full"></div></div>
  <div id="btn-group-${index}" class="hidden grid grid-cols-3 gap-1.5 md:gap-2 mt-2 pt-3 border-t border-gray-100 dark:border-zinc-800">
      <button onclick="openReminderModal('${index}')" class="bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 py-1.5 px-1 rounded border border-gray-200 dark:border-zinc-700 transition-colors flex items-center justify-center gap-1 overflow-hidden" title="Remind">
         <i class="fa-solid fa-bell text-sm md:text-base shrink-0"></i>
@@ -117,7 +138,7 @@ allCards += `
      </button>
      <button onclick="openShareTableFromComm('${item.sheetUrl}')" class="bg-gray-50 dark:bg-zinc-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 py-1.5 px-1 rounded border border-gray-200 dark:border-zinc-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors flex items-center justify-center gap-1 overflow-hidden" title="Share Pairing/Grouping Screenshot">
         <i class="fa-solid fa-share-nodes text-sm md:text-base shrink-0"></i>
-        <span class="text-[9px] md:text-[11px] font-semibold leading-tight text-center whitespace-normal">Share Pairing/Grouping Screenshot</span>
+        <span class="text-[9px] md:text-[11px] font-semibold leading-tight text-center whitespace-normal">Share Table</span>
      </button>
  </div>
 </div>`;
@@ -245,6 +266,7 @@ outingReminders[index] = msg;
 if(btnGroup) btnGroup.classList.remove('hidden');
 } else {
 container.innerHTML = `<span class="text-red-500 dark:text-red-400" title="${res.message || 'Unknown error'}">Error loading stats</span>`;
+container.classList.remove('animate-pulse');
 }
 });
 }
