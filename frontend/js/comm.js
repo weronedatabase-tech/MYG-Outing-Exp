@@ -1,5 +1,5 @@
 let currentCommAttSheetUrl = null;
-let commAttData = { participants: [], junctures: [], attendance: { '__GONE_HOME__': {} } };
+let commAttData = { participants: [], junctures: [], attendance: { '__GONE_HOME__': {} }, meetingLocs: [], dismissalLocs: [] };
 let commAttState = {
 currentJuncture: null,
 selectedGroups: [],
@@ -559,8 +559,8 @@ showView('actual-attendance');
 
 function renderCommAttFilters() {
 let groups = new Set();
-let meets = new Set();
-let dismissals = new Set();
+let meets = new Set(commAttData.meetingLocs || []);
+let dismissals = new Set(commAttData.dismissalLocs || []);
 
 (commAttData.participants || []).forEach(p => {
 if (p.group) groups.add(String(p.group));
@@ -670,7 +670,7 @@ function toggleCommAttFilterItem(type, item, e) {
 if (e) e.stopPropagation();
 
 let targetArray = type === 'group' ? commAttState.selectedGroups : (type === 'meet' ? commAttState.selectedMeets : commAttState.selectedDismissals);
-const available = type === 'group' ? commAttState.availableGroups : (type === 'meet' ? commAttState.availableDismissals : commAttState.availableDismissals);
+const available = type === 'group' ? commAttState.availableGroups : (type === 'meet' ? commAttState.availableMeets : commAttState.availableDismissals);
 
 const index = targetArray.indexOf(item);
 if (index > -1) {
