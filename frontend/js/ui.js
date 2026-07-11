@@ -148,9 +148,9 @@ if(icon) icon.classList.add('fa-spin');
 // Snapshot View State to Restore After Reload
 const stateToSave = {
    view: currentActiveView,
-   commSheet: typeof currentCommAttSheetUrl !== 'undefined' ? currentCommAttSheetUrl : null,
-   pairSheet: typeof currentManualPairingSheetUrl !== 'undefined' ? currentManualPairingSheetUrl : null,
-   groupSheet: typeof currentGroupingSheetUrl !== 'undefined' ? currentGroupingSheetUrl : null,
+   commSheet: currentCommAttSheetUrl || null,
+   pairSheet: currentManualPairingSheetUrl || null,
+   groupSheet: currentGroupingSheetUrl || null,
    isFiltered: typeof isFilteredManualPairingMode !== 'undefined' ? isFilteredManualPairingMode : false,
    filteredSource: typeof filteredManualPairingSourceView !== 'undefined' ? filteredManualPairingSourceView : null
 };
@@ -286,7 +286,7 @@ window[filterCallbackName]();
 
 function updateUnpairedNotification(count) {
 // Update Comm Dashboard List
-if(typeof currentSheetList !== 'undefined' && currentSheetList) {
+if(currentSheetList) {
 currentSheetList.forEach((item, index) => {
 if (item.sheetUrl === currentCommAttSheetUrl || item.sheetUrl === currentManualPairingSheetUrl || (typeof currentGroupingSheetUrl !== 'undefined' && item.sheetUrl === currentGroupingSheetUrl)) {
 const pendingDiv = document.getElementById(`pending-badge-${index}`);
@@ -425,49 +425,9 @@ if (!personObj) return;
 
 const ex = personObj.extra || {};
 const role = personObj.role || ex.role || 'TRAINEE';
+let htmlContent = "";
+
 const nameStr = personObj.name || '-';
-
-// --- DATA RESOLUTION FOR INLINE EDIT ---
-let sheetUrl = '';
-let meetOpts = []; 
-let disOpts = [];
-
-if (currentActiveView === 'comm-attendance') {
-  sheetUrl = typeof currentCommAttSheetUrl !== 'undefined' ? currentCommAttSheetUrl : '';
-  if (typeof commAttData !== 'undefined') {
-      meetOpts = [...(commAttData.meetingLocs || [])];
-      disOpts = [...(commAttData.dismissalLocs || [])];
-  }
-} else if (currentActiveView === 'manual-pairing') {
-  sheetUrl = typeof currentManualPairingSheetUrl !== 'undefined' ? currentManualPairingSheetUrl : '';
-  if (typeof manualPairingData !== 'undefined') {
-      meetOpts = [...(manualPairingData.meetingLocs || [])];
-      disOpts = [...(manualPairingData.dismissalLocs || [])];
-  }
-} else if (currentActiveView === 'manual-grouping') {
-  sheetUrl = typeof currentGroupingSheetUrl !== 'undefined' ? currentGroupingSheetUrl : '';
-  if (typeof groupingData !== 'undefined') {
-      meetOpts = [...(groupingData.meetingLocs || [])];
-      disOpts = [...(groupingData.dismissalLocs || [])];
-  }
-}
-
-const meetArr = (personObj.meetingLoc || ex.t_meet || ex.v_meet || '').trim();
-const meetFetch = (ex.t_meet_fetching || '').trim();
-const disArr = (personObj.dismissalLoc || ex.t_dismiss || ex.v_dismiss || '').trim();
-const disFetch = (ex.t_dismiss_fetching || '').trim();
-const volPaired = (personObj.volPaired || ex.t_paired_vol || ex.v_paired_trainee || '-').trim();
-const dietary = (ex.t_dietary || '-').trim();
-const cgContact = (ex.m_cg_contact || '-').trim();
-const remarks = (ex.remark || '').trim();
-
-// Auto-inject current selections into the dropdown options if they don't natively exist in the config
-if (meetArr && !meetOpts.some(o => o.toLowerCase() === meetArr.toLowerCase())) meetOpts.push(meetArr);
-if (disArr && !disOpts.some(o => o.toLowerCase() === disArr.toLowerCase())) disOpts.push(disArr);
-
-const meetOptionsHtml = `<option value="">-- None --</option>` + meetOpts.map(opt => `<option value="${opt}" ${meetArr.toLowerCase() === opt.toLowerCase() ? "selected" : ""}>${opt}</option>`).join("");
-const disOptionsHtml = `<option value="">-- None --</option>` + disOpts.map(opt => `<option value="${opt}" ${disArr.toLowerCase() === opt.toLowerCase() ? "selected" : ""}>${opt}</option>`).join("");
-
 const groupNum = personObj.group || ex.v_group || '';
 const groupBadge = groupNum 
 ? `<span class="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800 border px-2 py-0.5 rounded font-black text-xs uppercase shadow-sm">Grp ${groupNum}</span>` 
@@ -477,12 +437,101 @@ const roleBadge = role === 'TRAINEE'
 ? `<span class="bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 px-1.5 py-0.5 rounded text-[10px] uppercase font-black tracking-wider shadow-sm">Trainee</span>`
 : `<span class="bg-teal-50 text-teal-600 border border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 px-1.5 py-0.5 rounded text-[10px] uppercase font-black tracking-wider shadow-sm">Volunteer</span>`;
 
-// --- UI COMPOSITION ---
+let detailsHtml = "";
+let remarks = ex.remark || '-';
+
+if (role === 'TRAINEE') {
+const meetArr = personObj.meetingLoc || ex.t_meet || '-';
+const meetFetch = ex.t_meet_fetching || '-';
+const disArr = personObj.dismissalLoc || ex.t_dismiss || '-';
+const disFetch = ex.t_dismiss_fetching || '-';
+const volPaired = personObj.volPaired || ex.t_paired_vol || '-';
+const dietary = ex.t_dietary || '-';
+const cgContact = ex.m_cg_contact || '-';
+
+detailsHtml += `
+<div class="space-y-3 mt-4 text-sm text-gray-700 dark:text-gray-300">
+  <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+      <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0 mt-0.5"><i class="fa-solid fa-location-dot"></i></div>
+      <div class="flex-1 min-w-0">
+          <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Meeting</div>
+          <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${meetArr}</div>
+          ${meetFetch !== '-' && meetFetch !== '' ? `<div class="text-[11px] text-gray-500 break-words whitespace-pre-wrap mt-1"><i class="fa-solid fa-car-side mr-1 opacity-70"></i>Fetch: ${meetFetch}</div>` : ''}
+      </div>
+  </div>
+
+  <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+      <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-500 shrink-0 mt-0.5"><i class="fa-solid fa-flag-checkered"></i></div>
+      <div class="flex-1 min-w-0">
+          <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dismissal</div>
+          <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${disArr}</div>
+          ${disFetch !== '-' && disFetch !== '' ? `<div class="text-[11px] text-gray-500 break-words whitespace-pre-wrap mt-1"><i class="fa-solid fa-car-side mr-1 opacity-70"></i>Fetch: ${disFetch}</div>` : ''}
+      </div>
+  </div>
+
+  <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+      <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0 mt-0.5"><i class="fa-solid fa-handshake-angle"></i></div>
+      <div class="flex-1 min-w-0">
+          <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Paired Vol(s)</div>
+          <div class="font-bold text-teal-700 dark:text-teal-400 break-words whitespace-pre-wrap">${volPaired}</div>
+      </div>
+  </div>
+
+  <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+      <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-500 shrink-0 mt-0.5"><i class="fa-solid fa-utensils"></i></div>
+      <div class="flex-1 min-w-0">
+          <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dietary Restrictions</div>
+          <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${dietary}</div>
+      </div>
+  </div>
+
+  <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+      <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-500 shrink-0 mt-0.5"><i class="fa-solid fa-phone"></i></div>
+      <div class="flex-1 min-w-0">
+          <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">CG Contact</div>
+          <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${cgContact}</div>
+      </div>
+  </div>
+</div>
+`;
+} else if (role === 'VOLUNTEER') {
+const meet = personObj.meetingLoc || ex.v_meet || '-';
+const dismiss = personObj.dismissalLoc || ex.v_dismiss || '-';
+const pairedTrainees = personObj.volPaired || ex.v_paired_trainee || '-'; // If manually paired it will store in personObj.volPaired
+
+detailsHtml += `
+<div class="space-y-3 mt-4 text-sm text-gray-700 dark:text-gray-300">
+  <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+      <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0 mt-0.5"><i class="fa-solid fa-location-dot"></i></div>
+      <div class="flex-1 min-w-0">
+          <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Meeting</div>
+          <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${meet}</div>
+      </div>
+  </div>
+
+  <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+      <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-500 shrink-0 mt-0.5"><i class="fa-solid fa-flag-checkered"></i></div>
+      <div class="flex-1 min-w-0">
+          <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dismissal</div>
+          <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${dismiss}</div>
+      </div>
+  </div>
+
+  <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+      <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0 mt-0.5"><i class="fa-solid fa-user-group"></i></div>
+      <div class="flex-1 min-w-0">
+          <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Paired Trainee(s)</div>
+          <div class="font-bold text-teal-700 dark:text-teal-400 break-words whitespace-pre-wrap">${pairedTrainees}</div>
+      </div>
+  </div>
+</div>
+`;
+}
 
 let remarksHtml = "";
-if (remarks && remarks !== '-') {
+if (remarks && remarks !== '-' && remarks.trim() !== '') {
 remarksHtml = `
-<div class="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 border-l-4 border-l-yellow-400 dark:border-l-yellow-500 p-3 rounded-r-lg shadow-sm mb-3">
+<div class="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 border-l-4 border-l-yellow-400 dark:border-l-yellow-500 p-3 rounded-r-lg shadow-sm">
   <div class="flex items-center gap-2 mb-1">
       <i class="fa-solid fa-triangle-exclamation text-yellow-600 dark:text-yellow-500 text-sm"></i>
       <span class="font-black text-yellow-800 dark:text-yellow-400 text-[10px] uppercase tracking-wider">Remarks</span>
@@ -497,7 +546,7 @@ if (role === 'TRAINEE' && ex.t_one_on_one) {
   const oneOnOneRaw = String(ex.t_one_on_one).trim().toLowerCase();
   if (oneOnOneRaw !== '' && !['no', 'n', 'false', '0'].includes(oneOnOneRaw)) {
       pairingConsiderationsHtml = `
-      <div class="mt-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-400 dark:border-l-blue-500 p-3 rounded-r-lg shadow-sm mb-3">
+      <div class="mt-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-400 dark:border-l-blue-500 p-3 rounded-r-lg shadow-sm">
           <div class="flex items-center gap-2 mb-1">
               <i class="fa-solid fa-star text-blue-600 dark:text-blue-500 text-sm"></i>
               <span class="font-black text-blue-800 dark:text-blue-400 text-[10px] uppercase tracking-wider">Pairing Considerations</span>
@@ -508,79 +557,7 @@ if (role === 'TRAINEE' && ex.t_one_on_one) {
   }
 }
 
-// INLINE EDITABLE LOGISTICS SECTION
-const logisticsHtml = `
-<div class="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30 space-y-3 mb-3">
-  <div class="flex items-center justify-between gap-2 mb-1">
-      <span class="text-[10px] uppercase tracking-wider font-black text-blue-600 dark:text-blue-400"><i class="fa-solid fa-pen-to-square mr-1"></i> Quick Edit Logistics</span>
-  </div>
-  
-  <input type="hidden" id="inlineEditSheetUrl" value="${sheetUrl}">
-  <input type="hidden" id="inlineEditRole" value="${role}">
-  <input type="hidden" id="inlineEditName" value="${nameStr.replace(/"/g, '&quot;')}">
-
-  <div class="grid grid-cols-1 gap-3">
-      <div>
-          <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">Attending Status</label>
-          <select id="inlineEditAttending" class="w-full bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white rounded py-1.5 px-2 text-xs focus:border-blue-500 shadow-sm outline-none">
-              <option value="Y" selected>Y (Yes)</option>
-              <option value="N">N (No)</option>
-          </select>
-      </div>
-      
-      <div>
-          <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">Meeting Location</label>
-          <select id="inlineEditMeeting" class="w-full bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white rounded py-1.5 px-2 text-xs focus:border-blue-500 shadow-sm outline-none">
-              ${meetOptionsHtml}
-          </select>
-          ${meetFetch && meetFetch !== '-' ? `<div class="text-[10px] text-gray-500 dark:text-gray-400 mt-1"><i class="fa-solid fa-car-side mr-1 opacity-70"></i>Fetch: ${meetFetch}</div>` : ''}
-      </div>
-
-      <div>
-          <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">Dismissal Location</label>
-          <select id="inlineEditDismissal" class="w-full bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white rounded py-1.5 px-2 text-xs focus:border-blue-500 shadow-sm outline-none">
-              ${disOptionsHtml}
-          </select>
-          ${disFetch && disFetch !== '-' ? `<div class="text-[10px] text-gray-500 dark:text-gray-400 mt-1"><i class="fa-solid fa-car-side mr-1 opacity-70"></i>Fetch: ${disFetch}</div>` : ''}
-      </div>
-  </div>
-</div>
-`;
-
-// STATIC DETAILS
-let pairingTitle = role === 'TRAINEE' ? 'Paired Vol(s)' : 'Paired Trainee(s)';
-let pairingIcon = role === 'TRAINEE' ? 'fa-handshake-angle' : 'fa-user-group';
-let pairingColor = 'teal';
-let detailsHtml = `
-<div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800 mb-3 mt-3">
-  <div class="w-8 h-8 rounded-full bg-${pairingColor}-100 dark:bg-${pairingColor}-900/30 flex items-center justify-center text-${pairingColor}-500 shrink-0 mt-0.5"><i class="fa-solid ${pairingIcon}"></i></div>
-  <div class="flex-1 min-w-0">
-      <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">${pairingTitle}</div>
-      <div class="font-bold text-${pairingColor}-700 dark:text-${pairingColor}-400 break-words whitespace-pre-wrap">${volPaired}</div>
-  </div>
-</div>
-`;
-
-if (role === 'TRAINEE') {
-  detailsHtml += `
-  <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800 mb-3">
-      <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-500 shrink-0 mt-0.5"><i class="fa-solid fa-utensils"></i></div>
-      <div class="flex-1 min-w-0">
-          <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dietary Restrictions</div>
-          <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${dietary}</div>
-      </div>
-  </div>
-  <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-      <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-500 shrink-0 mt-0.5"><i class="fa-solid fa-phone"></i></div>
-      <div class="flex-1 min-w-0">
-          <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">CG Contact</div>
-          <div class="font-medium text-gray-900 dark:text-white break-words whitespace-pre-wrap">${cgContact}</div>
-      </div>
-  </div>
-  `;
-}
-
-let htmlContent = `
+htmlContent = `
 <div class="flex flex-col gap-2 pb-2">
 <div class="flex items-start justify-between gap-2">
   <h4 class="text-lg md:text-xl font-black text-gray-900 dark:text-white break-words leading-tight flex-1">${nameStr}</h4>
@@ -590,21 +567,22 @@ let htmlContent = `
 </div>
 ${remarksHtml}
 ${pairingConsiderationsHtml}
-${logisticsHtml}
 ${detailsHtml}
 `;
 
 const infoContent = document.getElementById('personInfoContent');
 if(infoContent) {
-infoContent.className = "w-full"; 
+infoContent.className = "w-full"; // Clear out pre-wrap/mono text utility classes
 infoContent.innerHTML = htmlContent;
 }
 
 const footer = document.getElementById('personInfoFooter');
 if(footer) {
 footer.innerHTML = `
-<button onclick="closePersonInfoModal()" class="flex-1 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-900 dark:text-white font-bold py-3 rounded-xl border border-gray-300 dark:border-zinc-700 shadow-sm transition-colors text-base">Cancel</button>
-<button onclick="submitInlineEdit()" id="inlineEditSubmitBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-sm transition-colors text-base flex items-center justify-center gap-2">Save Changes</button>
+<button onclick="openQuickEditModal('${nameStr}', '${role}')" class="flex-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 font-bold py-3 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm transition-colors text-base flex items-center justify-center gap-2">
+  <i class="fa-solid fa-pen-to-square"></i> Quick Edit
+</button>
+<button onclick="closePersonInfoModal()" class="flex-1 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-900 dark:text-white font-bold py-3 rounded-xl border border-gray-300 dark:border-zinc-700 shadow-sm transition-colors text-base">Close</button>
 `;
 }
 
@@ -617,17 +595,102 @@ const infoModal = document.getElementById('personInfoModal');
 if(infoModal) infoModal.classList.add('hidden');
 }
 
-function submitInlineEdit() {
-const btn = document.getElementById('inlineEditSubmitBtn');
-const sheetUrl = document.getElementById('inlineEditSheetUrl').value;
-const role = document.getElementById('inlineEditRole').value.toLowerCase();
-const name = document.getElementById('inlineEditName').value;
+// --- QUICK EDIT LOGIC VIA LONG PRESS ---
 
-const att = document.getElementById('inlineEditAttending').value;
-const meet = document.getElementById('inlineEditMeeting').value;
-const dis = document.getElementById('inlineEditDismissal').value;
+function openQuickEditModal(name, role) {
+let sheetUrl = null;
+if (currentActiveView === 'comm-attendance') sheetUrl = currentCommAttSheetUrl;
+else if (currentActiveView === 'manual-pairing') sheetUrl = currentManualPairingSheetUrl;
+else if (currentActiveView === 'manual-grouping') sheetUrl = currentGroupingSheetUrl;
 
-if (!sheetUrl) return alert("Context lost. Please refresh the page.");
+if (!sheetUrl) return alert("Error: Context URL lost.");
+
+const content = document.getElementById('personInfoContent');
+const footer = document.getElementById('personInfoFooter');
+const roleFormatted = role.toLowerCase();
+
+// Swap Info Modal content to loading state
+content.innerHTML = `
+<div class="flex flex-col items-center justify-center py-10">
+  <i class="fa-solid fa-circle-notch fa-spin text-blue-500 text-3xl mb-4"></i>
+  <p class="text-sm font-bold text-gray-500 dark:text-gray-400">Loading editable fields...</p>
+</div>
+`;
+footer.innerHTML = `<button onclick="closePersonInfoModal()" class="w-full bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white font-bold py-3 rounded-xl border border-gray-300 dark:border-zinc-700 shadow-sm transition-colors text-base">Cancel</button>`;
+
+apiCall('getPersonData', { url: sheetUrl, type: roleFormatted, name: name }).then(res => {
+  if (res.success && !res.isNew) {
+      renderQuickEditForm(res, name, roleFormatted, sheetUrl);
+  } else {
+      content.innerHTML = `<div class="text-red-500 font-bold py-4 text-center">Failed to load data for editing.</div>`;
+  }
+});
+}
+
+function renderQuickEditForm(res, name, role, sheetUrl) {
+const content = document.getElementById('personInfoContent');
+const footer = document.getElementById('personInfoFooter');
+
+const meetingOpts = res.meetingOpts || [];
+const dismissalOpts = res.dismissalOpts || [];
+
+let attVal = getValueFuzzy(res.data, "attendingyn") || getValueFuzzy(res.data, "attending");
+let meetVal = getValueFuzzy(res.data, "meetinglocation");
+let disVal = getValueFuzzy(res.data, "dismissallocation");
+
+const meetOptionsHtml = meetingOpts.map(opt => `<option value="${opt}" ${meetVal.toString().trim().toLowerCase() === opt.toString().trim().toLowerCase() ? "selected" : ""}>${opt}</option>`).join("");
+const disOptionsHtml = dismissalOpts.map(opt => `<option value="${opt}" ${disVal.toString().trim().toLowerCase() === opt.toString().trim().toLowerCase() ? "selected" : ""}>${opt}</option>`).join("");
+
+content.innerHTML = `
+<div class="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200 dark:border-zinc-700">
+  <i class="fa-solid fa-pen-to-square text-blue-500"></i>
+  <h4 class="text-lg font-black text-gray-900 dark:text-white">Quick Edit: ${name}</h4>
+</div>
+<form id="quickEditForm" class="space-y-4">
+  <input type="hidden" id="qeSheetUrl" value="${sheetUrl}">
+  <input type="hidden" id="qeRole" value="${role}">
+  <input type="hidden" id="qeName" value="${name}">
+
+  <div>
+      <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Attending (Y/N)</label>
+      <select id="qeAttending" class="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white rounded-lg p-2.5 text-sm focus:border-blue-500 shadow-sm outline-none">
+          <option value="Y" ${attVal.toLowerCase() === 'y' ? "selected" : ""}>Y (Yes)</option>
+          <option value="N" ${attVal.toLowerCase() === 'n' ? "selected" : ""}>N (No)</option>
+          <option value="" ${attVal.toLowerCase() !== 'y' && attVal.toLowerCase() !== 'n' ? "selected" : ""}>Unknown</option>
+      </select>
+  </div>
+  <div>
+      <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Meeting Location</label>
+      <select id="qeMeeting" class="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white rounded-lg p-2.5 text-sm focus:border-blue-500 shadow-sm outline-none">
+          <option value="">-- None --</option>
+          ${meetOptionsHtml}
+      </select>
+  </div>
+  <div>
+      <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Dismissal Location</label>
+      <select id="qeDismissal" class="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-white rounded-lg p-2.5 text-sm focus:border-blue-500 shadow-sm outline-none">
+          <option value="">-- None --</option>
+          ${disOptionsHtml}
+      </select>
+  </div>
+</form>
+`;
+
+footer.innerHTML = `
+<button onclick="closePersonInfoModal()" class="flex-1 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-900 dark:text-white font-bold py-3 rounded-xl border border-gray-300 dark:border-zinc-700 shadow-sm transition-colors text-base">Cancel</button>
+<button onclick="submitQuickEdit()" id="qeSubmitBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-sm transition-colors text-base flex items-center justify-center gap-2">Save</button>
+`;
+}
+
+function submitQuickEdit() {
+const btn = document.getElementById('qeSubmitBtn');
+const sheetUrl = document.getElementById('qeSheetUrl').value;
+const role = document.getElementById('qeRole').value;
+const name = document.getElementById('qeName').value;
+
+const att = document.getElementById('qeAttending').value;
+const meet = document.getElementById('qeMeeting').value;
+const dis = document.getElementById('qeDismissal').value;
 
 btn.disabled = true;
 btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...`;
