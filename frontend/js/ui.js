@@ -680,8 +680,24 @@ const dis = document.getElementById('infoEditDismissal').value;
 
 if (!sheetUrl) return alert("Error: Context URL lost.");
 
+// Optimistic UI Flow
 btn.disabled = true;
-btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...`;
+btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved`;
+btn.classList.replace('bg-blue-600', 'bg-green-600');
+btn.classList.replace('border-blue-600', 'border-green-600');
+btn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
+
+// Show background syncing indicator safely depending on current view context
+if (currentActiveView === 'comm-attendance' && typeof setCommAttBtnState === 'function') {
+  setCommAttBtnState('saving');
+} else if (currentActiveView === 'manual-pairing' && typeof setManualPairingSyncButtonState === 'function') {
+  setManualPairingSyncButtonState('saving');
+} else if (currentActiveView === 'manual-grouping' && typeof setGroupingSyncButtonState === 'function') {
+  setGroupingSyncButtonState('saving');
+}
+
+// Close Modal Instantly for zero-latency UX
+setTimeout(() => closePersonInfoModal(), 250);
 
 const payloadData = {
  "Name": name,
@@ -693,26 +709,25 @@ const payloadData = {
 const payload = { sheetUrl: sheetUrl, type: role.toLowerCase(), data: payloadData, targetName: name };
 
 apiCall('submitAttendanceData', payload).then(res => {
- btn.disabled = false;
  if(res.success) {
-     btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved`;
-     btn.classList.replace('bg-blue-600', 'bg-green-600');
-     btn.classList.replace('border-blue-600', 'border-green-600');
-     btn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
-     
-     // Auto-trigger the appropriate UI refresh depending on what view the user is currently looking at
+     // Background cache rebuild complete, trigger automatic UI data refresh seamlessly
      if (currentActiveView === 'comm-attendance' && typeof manualSyncCommAttendance === 'function') {
-         setTimeout(() => manualSyncCommAttendance(), 500);
+         manualSyncCommAttendance();
      } else if (currentActiveView === 'manual-pairing' && typeof manualSyncManualPairing === 'function') {
-         setTimeout(() => manualSyncManualPairing(), 500);
+         manualSyncManualPairing();
      } else if (currentActiveView === 'manual-grouping' && typeof manualSyncGrouping === 'function') {
-         setTimeout(() => manualSyncGrouping(), 500);
+         manualSyncGrouping();
      }
-     
-     setTimeout(() => closePersonInfoModal(), 800);
  } else {
-     btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Save Failed`;
-     alert("Error: " + res.message);
+     alert("Save Failed: " + res.message);
+     // Revert the background syncing indicator safely on failure
+     if (currentActiveView === 'comm-attendance' && typeof setCommAttBtnState === 'function') {
+         setCommAttBtnState('error');
+     } else if (currentActiveView === 'manual-pairing' && typeof setManualPairingSyncButtonState === 'function') {
+         setManualPairingSyncButtonState('error');
+     } else if (currentActiveView === 'manual-grouping' && typeof setGroupingSyncButtonState === 'function') {
+         setGroupingSyncButtonState('error');
+     }
  }
 });
 }

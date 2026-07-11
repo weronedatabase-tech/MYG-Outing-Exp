@@ -141,13 +141,13 @@ cache.put(cacheKey, jsonStr, 21600); // 6 hours max
 const chunks = [];
 let i = 0;
 while (i < jsonStr.length) {
-  chunks.push(jsonStr.substring(i, i + 90000));
-  i += 90000;
+ chunks.push(jsonStr.substring(i, i + 90000));
+ i += 90000;
 }
 cache.put(cacheKey + "_count", chunks.length.toString(), 21600);
 const dict = {};
 for (let j = 0; j < chunks.length; j++) {
-  dict[cacheKey + "_" + j] = chunks[j];
+ dict[cacheKey + "_" + j] = chunks[j];
 }
 cache.putAll(dict, 21600);
 }
@@ -168,8 +168,8 @@ for (let i = 0; i < count; i++) keys.push(cacheKey + "_" + i);
 const dict = cache.getAll(keys);
 let fullStr = "";
 for (let i = 0; i < count; i++) {
-  if (!dict[keys[i]]) return null; 
-  fullStr += dict[keys[i]];
+ if (!dict[keys[i]]) return null; 
+ fullStr += dict[keys[i]];
 }
 return fullStr;
 }
@@ -211,9 +211,9 @@ function setupCron() {
 const triggers = ScriptApp.getProjectTriggers();
 triggers.forEach(t => ScriptApp.deleteTrigger(t));
 ScriptApp.newTrigger('precomputeRecentOutings')
-     .timeBased()
-     .everyMinutes(15)
-     .create();
+    .timeBased()
+    .everyMinutes(15)
+    .create();
 precomputeRecentOutings();
 }
 
@@ -250,13 +250,13 @@ let d = parseInt(dStr.substring(6, 8), 10);
 let prettyDate = (mIndex >= 0 && mIndex < 12 && d > 0 && d <= 31) ? `${d} ${monthNames[mIndex]} ${y}` : dStr;
 
 folderList.push({
-  id: folder.getId(),
-  fullName: name,
-  displayName: cleanName || name,
-  formattedDate: prettyDate,
-  folderDateNum: folderDateNum,
-  folderUrl: folder.getUrl(),
-  sheetUrl: ""
+ id: folder.getId(),
+ fullName: name,
+ displayName: cleanName || name,
+ formattedDate: prettyDate,
+ folderDateNum: folderDateNum,
+ folderUrl: folder.getUrl(),
+ sheetUrl: ""
 });
 }
 }
@@ -326,20 +326,20 @@ const maxRow = infoSheet.getLastRow();
 const getList = (keyword, stopKeyword, isMeet) => {
 let found = infoSheet.createTextFinder(keyword).findNext();
 if (found) {
-  const row = found.getRow() + 1;
-  const col = found.getColumn();
-  if (col <= maxCol) {
-      const vals = infoSheet.getRange(row, col, Math.min(10, maxRow - row + 1), Math.min(3, maxCol - col + 1)).getValues();
-      for(let r of vals) {
-          const val = String(r[0]).trim();
-          if(val === "" || (stopKeyword && val.toLowerCase().includes(stopKeyword.toLowerCase()))) break;
-          if (isMeet) meetLocs.push(val);
-          else disLocs.push(val);
-          if (r.length > 2 && (r[2] === true || String(r[2]).toLowerCase() === 'true')) {
-              busJuncs.push({ name: val, type: isMeet ? 'meet' : 'dismiss' });
-          }
-      }
-  }
+ const row = found.getRow() + 1;
+ const col = found.getColumn();
+ if (col <= maxCol) {
+     const vals = infoSheet.getRange(row, col, Math.min(10, maxRow - row + 1), Math.min(3, maxCol - col + 1)).getValues();
+     for(let r of vals) {
+         const val = String(r[0]).trim();
+         if(val === "" || (stopKeyword && val.toLowerCase().includes(stopKeyword.toLowerCase()))) break;
+         if (isMeet) meetLocs.push(val);
+         else disLocs.push(val);
+         if (r.length > 2 && (r[2] === true || String(r[2]).toLowerCase() === 'true')) {
+             busJuncs.push({ name: val, type: isMeet ? 'meet' : 'dismiss' });
+         }
+     }
+ }
 }
 };
 getList("Meeting Location", "Dismissal", true);
@@ -568,14 +568,14 @@ let row = found.getRow() + 1;
 let col = found.getColumn();
 const neededCols = col + 2;
 if (neededCols > sheet.getMaxColumns()) {
-  sheet.insertColumnsAfter(sheet.getMaxColumns(), neededCols - sheet.getMaxColumns());
+ sheet.insertColumnsAfter(sheet.getMaxColumns(), neededCols - sheet.getMaxColumns());
 }
 for(let i=0; i<4; i++) {
-  if (row + i <= maxRow) {
-      sheet.getRange(row + i, col).setValue(locs[i] || "");
-      sheet.getRange(row + i, col + 1).setValue(times[i] || "");
-      sheet.getRange(row + i, col + 2).setValue(buses && buses[i] ? true : false);
-  }
+ if (row + i <= maxRow) {
+     sheet.getRange(row + i, col).setValue(locs[i] || "");
+     sheet.getRange(row + i, col + 1).setValue(times[i] || "");
+     sheet.getRange(row + i, col + 2).setValue(buses && buses[i] ? true : false);
+ }
 }
 }
 };
@@ -621,64 +621,64 @@ eventName: "", eventDate: "", meetingLocs: [], meetingTimes: [], meetingBuses: [
 
 if (infoSheet) {
 try {
-  const maxInfoRow = infoSheet.getLastRow();
-  const maxInfoCol = infoSheet.getMaxColumns();
+ const maxInfoRow = infoSheet.getLastRow();
+ const maxInfoCol = infoSheet.getMaxColumns();
 
-  if (maxInfoRow >= 2 && maxInfoCol >= 2) {
-    const numRows = Math.min(maxInfoRow, 25) - 1;
-    if (numRows > 0) {
-       outingMessage = infoSheet.getRange(2, 2, numRows, 1).getDisplayValues()
-           .map(r => r[0]).join('\n').trim();
-    }
-  }
+ if (maxInfoRow >= 2 && maxInfoCol >= 2) {
+   const numRows = Math.min(maxInfoRow, 25) - 1;
+   if (numRows > 0) {
+      outingMessage = infoSheet.getRange(2, 2, numRows, 1).getDisplayValues()
+          .map(r => r[0]).join('\n').trim();
+   }
+ }
 
-  const getVal = (keyword) => {
-    let found = infoSheet.createTextFinder(keyword).findNext();
-    if (!found || found.getColumn() >= maxInfoCol) return "";
-    return found.offset(0, 1).getDisplayValue();
-  };
+ const getVal = (keyword) => {
+   let found = infoSheet.createTextFinder(keyword).findNext();
+   if (!found || found.getColumn() >= maxInfoCol) return "";
+   return found.offset(0, 1).getDisplayValue();
+ };
 
-  const getList = (keyword, stopKeyword) => {
-    const locs = [], times = [], buses = [];
-    let found = infoSheet.createTextFinder(keyword).findNext();
-    if (found) {
-        const row = found.getRow() + 1;
-        const col = found.getColumn();
-        const maxRows = infoSheet.getLastRow() - row + 1;
-        if (maxRows > 0 && col <= maxInfoCol) {
-            const numColsToRead = Math.min(3, maxInfoCol - col + 1);
-            const vals = infoSheet.getRange(row, col, Math.min(10, maxRows), numColsToRead).getValues();
-            for(let r of vals) {
-                const val = String(r[0]).trim();
-                if(val === "" || (stopKeyword && val.toLowerCase().includes(stopKeyword.toLowerCase()))) break;
-                locs.push(val);
-                times.push(r.length > 1 ? String(r[1]).trim() : "");
-                buses.push(r.length > 2 ? (r[2] === true || String(r[2]).toLowerCase() === 'true') : false);
-            }
-        }
-    }
-    return { locs, times, buses };
-  };
+ const getList = (keyword, stopKeyword) => {
+   const locs = [], times = [], buses = [];
+   let found = infoSheet.createTextFinder(keyword).findNext();
+   if (found) {
+       const row = found.getRow() + 1;
+       const col = found.getColumn();
+       const maxRows = infoSheet.getLastRow() - row + 1;
+       if (maxRows > 0 && col <= maxInfoCol) {
+           const numColsToRead = Math.min(3, maxInfoCol - col + 1);
+           const vals = infoSheet.getRange(row, col, Math.min(10, maxRows), numColsToRead).getValues();
+           for(let r of vals) {
+               const val = String(r[0]).trim();
+               if(val === "" || (stopKeyword && val.toLowerCase().includes(stopKeyword.toLowerCase()))) break;
+               locs.push(val);
+               times.push(r.length > 1 ? String(r[1]).trim() : "");
+               buses.push(r.length > 2 ? (r[2] === true || String(r[2]).toLowerCase() === 'true') : false);
+           }
+       }
+   }
+   return { locs, times, buses };
+ };
 
-  outingConfig.eventName = getVal("Name of Outing");
-  const dateCell = infoSheet.createTextFinder("Date").findNext();
-  if(dateCell && dateCell.getColumn() < maxInfoCol) {
-    const dVal = dateCell.offset(0,1).getValue();
-    if (dVal instanceof Date) {
-        outingConfig.eventDate = Utilities.formatDate(dVal, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd");
-    } else {
-        outingConfig.eventDate = getVal("Date"); 
-    }
-  }
+ outingConfig.eventName = getVal("Name of Outing");
+ const dateCell = infoSheet.createTextFinder("Date").findNext();
+ if(dateCell && dateCell.getColumn() < maxInfoCol) {
+   const dVal = dateCell.offset(0,1).getValue();
+   if (dVal instanceof Date) {
+       outingConfig.eventDate = Utilities.formatDate(dVal, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd");
+   } else {
+       outingConfig.eventDate = getVal("Date"); 
+   }
+ }
 
-  const meet = getList("Meeting Location", "Dismissal");
-  outingConfig.meetingLocs = meet.locs; 
-  outingConfig.meetingTimes = meet.times;
-  outingConfig.meetingBuses = meet.buses;
-  const dis = getList("Dismissal Location", "Timeline");
-  outingConfig.dismissalLocs = dis.locs; 
-  outingConfig.dismissalTimes = dis.times;
-  outingConfig.dismissalBuses = dis.buses;
+ const meet = getList("Meeting Location", "Dismissal");
+ outingConfig.meetingLocs = meet.locs; 
+ outingConfig.meetingTimes = meet.times;
+ outingConfig.meetingBuses = meet.buses;
+ const dis = getList("Dismissal Location", "Timeline");
+ outingConfig.dismissalLocs = dis.locs; 
+ outingConfig.dismissalTimes = dis.times;
+ outingConfig.dismissalBuses = dis.buses;
 } catch(extractErr) { console.log(extractErr); }
 }
 
@@ -697,19 +697,19 @@ let tNameIdx = getColIndex(tHeaders, "name");
 if (tNameIdx === -1) tNameIdx = 0;
 
 tData.forEach(row => {
-  const name = row[tNameIdx] ? row[tNameIdx].toString().trim() : "";
-  if(!name) return;
-  const project = (tProjIdx > -1 && row[tProjIdx]) ? row[tProjIdx].toString().trim() : "Unassigned";
-  const att = (tAttIdx > -1 && row[tAttIdx]) ? row[tAttIdx].toString().trim().toLowerCase() : "";
-  const cgCount = (tCareIdx > -1 && row[tCareIdx]) ? parseInt(row[tCareIdx]) : 0;
-  initProj(project);
-  stats[project].tTot++;
-  if(att === 'y') {
-    stats[project].tY++;
-    if(!isNaN(cgCount) && cgCount > 0) stats[project].cY += cgCount;
-  } else if (att !== 'n') {
-    pendingTrainees.push(name);
-  }
+ const name = row[tNameIdx] ? row[tNameIdx].toString().trim() : "";
+ if(!name) return;
+ const project = (tProjIdx > -1 && row[tProjIdx]) ? row[tProjIdx].toString().trim() : "Unassigned";
+ const att = (tAttIdx > -1 && row[tAttIdx]) ? row[tAttIdx].toString().trim().toLowerCase() : "";
+ const cgCount = (tCareIdx > -1 && row[tCareIdx]) ? parseInt(row[tCareIdx]) : 0;
+ initProj(project);
+ stats[project].tTot++;
+ if(att === 'y') {
+   stats[project].tY++;
+   if(!isNaN(cgCount) && cgCount > 0) stats[project].cY += cgCount;
+ } else if (att !== 'n') {
+   pendingTrainees.push(name);
+ }
 });
 }
 
@@ -723,13 +723,13 @@ let vNameIdx = getColIndex(vHeaders, "name");
 if (vNameIdx === -1) vNameIdx = 0;
 
 vData.forEach(row => {
-  const name = row[vNameIdx] ? row[vNameIdx].toString().trim() : "";
-  if(!name) return;
-  const project = (vProjIdx > -1 && row[vProjIdx]) ? row[vProjIdx].toString().trim() : "Unassigned";
-  const att = (vAttIdx > -1 && row[vAttIdx]) ? row[vAttIdx].toString().trim().toLowerCase() : "";
-  initProj(project);
-  stats[project].vTot++;
-  if(att === 'y') stats[project].vY++;
+ const name = row[vNameIdx] ? row[vNameIdx].toString().trim() : "";
+ if(!name) return;
+ const project = (vProjIdx > -1 && row[vProjIdx]) ? row[vProjIdx].toString().trim() : "Unassigned";
+ const att = (vAttIdx > -1 && row[vAttIdx]) ? row[vAttIdx].toString().trim().toLowerCase() : "";
+ initProj(project);
+ stats[project].vTot++;
+ if(att === 'y') stats[project].vY++;
 });
 }
 
@@ -816,9 +816,9 @@ let meetingLocs = []; let dismissalLocs = [];
 const infoSheet = ss.getSheetByName("OutingInformation");
 if (infoSheet) {
 try {
-    const ext = extractLocations(infoSheet);
-    meetingLocs = ext.meetLocs;
-    dismissalLocs = ext.disLocs;
+   const ext = extractLocations(infoSheet);
+   meetingLocs = ext.meetLocs;
+   dismissalLocs = ext.disLocs;
 } catch(e) {}
 }
 
@@ -827,33 +827,33 @@ const trainees = []; const volunteers = [];
 
 const tLastRow = tSheet.getLastRow();
 if (tLastRow > 1) {
-  const tData = tSheet.getRange(2, 1, tLastRow - 1, tSheet.getLastColumn()).getValues();
-  const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
-  const tNameIdx = getColIndex(tHeaders, "name") > -1 ? getColIndex(tHeaders, "name") : 0;
-  const tAttIdx = getColIndex(tHeaders, "attending");
-  const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
-  const tProjIdx = getColIndex(tHeaders, "project");
-  const tCareIdx = getColIndex(tHeaders, "caregiver");
-  const tGroupIdx = getColIndex(tHeaders, "outing grouping");
+ const tData = tSheet.getRange(2, 1, tLastRow - 1, tSheet.getLastColumn()).getValues();
+ const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
+ const tNameIdx = getColIndex(tHeaders, "name") > -1 ? getColIndex(tHeaders, "name") : 0;
+ const tAttIdx = getColIndex(tHeaders, "attending");
+ const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
+ const tProjIdx = getColIndex(tHeaders, "project");
+ const tCareIdx = getColIndex(tHeaders, "caregiver");
+ const tGroupIdx = getColIndex(tHeaders, "outing grouping");
 
-  tData.forEach(row => {
-      const name = row[tNameIdx] ? row[tNameIdx].toString().trim() : "";
-      if (name) {
-          const att = (tAttIdx > -1 && row[tAttIdx]) ? row[tAttIdx].toString().toLowerCase() : "";
-          trainees.push({
-              name: name, role: 'TRAINEE',
-              caregivers: (tCareIdx > -1 && row[tCareIdx]) ? parseInt(row[tCareIdx]) || 0 : 0,
-              attending: att,
-              volPaired: (tVolPairedIdx > -1 && row[tVolPairedIdx]) ? row[tVolPairedIdx].toString().trim() : "",
-              project: (tProjIdx > -1 && row[tProjIdx]) ? row[tProjIdx].toString().trim() : "",
-              group: (tGroupIdx > -1 && row[tGroupIdx]) ? row[tGroupIdx].toString().trim() : "",
-              isAttendingN: att === 'n',
-              isAttendingUnknown: att === '',
-              isGoneHome: false,
-              extra: extraDataMap[name.toLowerCase()] || {}
-          });
-      }
-  });
+ tData.forEach(row => {
+     const name = row[tNameIdx] ? row[tNameIdx].toString().trim() : "";
+     if (name) {
+         const att = (tAttIdx > -1 && row[tAttIdx]) ? row[tAttIdx].toString().toLowerCase() : "";
+         trainees.push({
+             name: name, role: 'TRAINEE',
+             caregivers: (tCareIdx > -1 && row[tCareIdx]) ? parseInt(row[tCareIdx]) || 0 : 0,
+             attending: att,
+             volPaired: (tVolPairedIdx > -1 && row[tVolPairedIdx]) ? row[tVolPairedIdx].toString().trim() : "",
+             project: (tProjIdx > -1 && row[tProjIdx]) ? row[tProjIdx].toString().trim() : "",
+             group: (tGroupIdx > -1 && row[tGroupIdx]) ? row[tGroupIdx].toString().trim() : "",
+             isAttendingN: att === 'n',
+             isAttendingUnknown: att === '',
+             isGoneHome: false,
+             extra: extraDataMap[name.toLowerCase()] || {}
+         });
+     }
+ });
 }
 
 const gLastRow = gSheet.getLastRow();
@@ -865,42 +865,42 @@ if (gNameIdx === -1) gNameIdx = getColIndex(gHeaders, "name");
 if (gNameIdx === -1) gNameIdx = 0;
 
 if (goneHomeIdx > -1 && gLastRow > 2) {
-  const gData = gSheet.getRange(3, 1, gLastRow - 2, gSheet.getLastColumn()).getValues();
-  const goneHomeMap = {};
-  gData.forEach(row => {
-      const name = String(row[gNameIdx]).trim().toLowerCase();
-      if (name) goneHomeMap[name] = (row[goneHomeIdx] === true || String(row[goneHomeIdx]).toLowerCase() === 'true');
-  });
-  trainees.forEach(t => { if (goneHomeMap[t.name.toLowerCase()]) t.isGoneHome = true; });
+ const gData = gSheet.getRange(3, 1, gLastRow - 2, gSheet.getLastColumn()).getValues();
+ const goneHomeMap = {};
+ gData.forEach(row => {
+     const name = String(row[gNameIdx]).trim().toLowerCase();
+     if (name) goneHomeMap[name] = (row[goneHomeIdx] === true || String(row[goneHomeIdx]).toLowerCase() === 'true');
+ });
+ trainees.forEach(t => { if (goneHomeMap[t.name.toLowerCase()]) t.isGoneHome = true; });
 }
 
 const vLastRow = vSheet.getLastRow();
 if (vLastRow > 1) {
-  const vData = vSheet.getRange(2, 1, vLastRow - 1, vSheet.getLastColumn()).getValues();
-  const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues()[0];
-  const vNameIdx = getColIndex(vHeaders, "name") > -1 ? getColIndex(vHeaders, "name") : 0;
-  const vAttIdx = getColIndex(vHeaders, "attending");
-  const vProjIdx = getColIndex(vHeaders, "project");
-  const vGroupICIdx = getColIndex(vHeaders, "group ic");
-  const vMeetICIdx = getColIndex(vHeaders, "meeting ic");
-  const vDismissICIdx = getColIndex(vHeaders, "dismissal ic");
+ const vData = vSheet.getRange(2, 1, vLastRow - 1, vSheet.getLastColumn()).getValues();
+ const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues()[0];
+ const vNameIdx = getColIndex(vHeaders, "name") > -1 ? getColIndex(vHeaders, "name") : 0;
+ const vAttIdx = getColIndex(vHeaders, "attending");
+ const vProjIdx = getColIndex(vHeaders, "project");
+ const vGroupICIdx = getColIndex(vHeaders, "group ic");
+ const vMeetICIdx = getColIndex(vHeaders, "meeting ic");
+ const vDismissICIdx = getColIndex(vHeaders, "dismissal ic");
 
-  vData.forEach(row => {
-      const att = (vAttIdx > -1 && row[vAttIdx]) ? row[vAttIdx].toString().toLowerCase() : "";
-      if (att === 'y') {
-          const name = row[vNameIdx] ? row[vNameIdx].toString().trim() : "";
-          if (name) {
-              volunteers.push({
-                  name: name, role: 'VOLUNTEER',
-                  project: (vProjIdx > -1 && row[vProjIdx]) ? row[vProjIdx].toString().trim() : "",
-                  groupIC: (vGroupICIdx > -1 && row[vGroupICIdx]) ? (String(row[vGroupICIdx]).toLowerCase() === 'true' || String(row[vGroupICIdx]).toLowerCase() === 'y') : false,
-                  meetIC: (vMeetICIdx > -1 && row[vMeetICIdx]) ? (String(row[vMeetICIdx]).toLowerCase() === 'true' || String(row[vMeetICIdx]).toLowerCase() === 'y') : false,
-                  dismissIC: (vDismissICIdx > -1 && row[vDismissICIdx]) ? (String(row[vDismissICIdx]).toLowerCase() === 'true' || String(row[vDismissICIdx]).toLowerCase() === 'y') : false,
-                  extra: extraDataMap[name.toLowerCase()] || {}
-              });
-          }
-      }
-  });
+ vData.forEach(row => {
+     const att = (vAttIdx > -1 && row[vAttIdx]) ? row[vAttIdx].toString().toLowerCase() : "";
+     if (att === 'y') {
+         const name = row[vNameIdx] ? row[vNameIdx].toString().trim() : "";
+         if (name) {
+             volunteers.push({
+                 name: name, role: 'VOLUNTEER',
+                 project: (vProjIdx > -1 && row[vProjIdx]) ? row[vProjIdx].toString().trim() : "",
+                 groupIC: (vGroupICIdx > -1 && row[vGroupICIdx]) ? (String(row[vGroupICIdx]).toLowerCase() === 'true' || String(row[vGroupICIdx]).toLowerCase() === 'y') : false,
+                 meetIC: (vMeetICIdx > -1 && row[vMeetICIdx]) ? (String(row[vMeetICIdx]).toLowerCase() === 'true' || String(row[vMeetICIdx]).toLowerCase() === 'y') : false,
+                 dismissIC: (vDismissICIdx > -1 && row[vDismissICIdx]) ? (String(row[vDismissICIdx]).toLowerCase() === 'true' || String(row[vDismissICIdx]).toLowerCase() === 'y') : false,
+                 extra: extraDataMap[name.toLowerCase()] || {}
+             });
+         }
+     }
+ });
 }
 
 const result = { success: true, data: { trainees: trainees, volunteers: volunteers, meetingLocs: meetingLocs, dismissalLocs: dismissalLocs } };
@@ -987,8 +987,8 @@ const tNameIdx = getColIndex(tHeaders, "name") > -1 ? getColIndex(tHeaders, "nam
 let tGroupIdx = getColIndex(tHeaders, "outing grouping");
 
 if (tGroupIdx === -1) {
-  tGroupIdx = tHeaders.length;
-  tSheet.getRange(1, tGroupIdx + 1).setValue("Outing Grouping");
+ tGroupIdx = tHeaders.length;
+ tSheet.getRange(1, tGroupIdx + 1).setValue("Outing Grouping");
 }
 
 const tRange = tSheet.getRange(2, 1, tLastRow - 1, Math.max(tSheet.getLastColumn(), tGroupIdx + 1));
@@ -997,24 +997,24 @@ const tFormulas = tRange.getFormulas();
 
 const tUpdatesMap = {};
 tUpdates.forEach(u => {
-  const n = u.name || u.traineeName;
-  tUpdatesMap[n.trim().toLowerCase()] = u.group;
+ const n = u.name || u.traineeName;
+ tUpdatesMap[n.trim().toLowerCase()] = u.group;
 });
 
 let changed = false;
 for (let i = 0; i < tData.length; i++) {
-  const name = tData[i][tNameIdx] ? tData[i][tNameIdx].toString().trim().toLowerCase() : "";
-  if (name && tUpdatesMap.hasOwnProperty(name)) {
-     if (tData[i][tGroupIdx] !== tUpdatesMap[name]) {
-         tData[i][tGroupIdx] = tUpdatesMap[name];
-         tFormulas[i][tGroupIdx] = ""; 
-         changed = true;
-     }
-  }
+ const name = tData[i][tNameIdx] ? tData[i][tNameIdx].toString().trim().toLowerCase() : "";
+ if (name && tUpdatesMap.hasOwnProperty(name)) {
+    if (tData[i][tGroupIdx] !== tUpdatesMap[name]) {
+        tData[i][tGroupIdx] = tUpdatesMap[name];
+        tFormulas[i][tGroupIdx] = ""; 
+        changed = true;
+    }
+ }
 }
 if (changed) {
-  let output = tData.map((vals, i) => vals.map((v, c) => tFormulas[i][c] !== "" ? tFormulas[i][c] : v));
-  tRange.setValues(output);
+ let output = tData.map((vals, i) => vals.map((v, c) => tFormulas[i][c] !== "" ? tFormulas[i][c] : v));
+ tRange.setValues(output);
 }
 }
 }
@@ -1040,7 +1040,7 @@ if (vDismissICIdx === -1) { vDismissICIdx = vHeaders.length + newHeadersCount; n
 
 const maxColNeeded = Math.max(vSheet.getLastColumn(), vGroupICIdx + 1, vMeetICIdx + 1, vDismissICIdx + 1);
 if (maxColNeeded > vSheet.getMaxColumns()) {
-  vSheet.insertColumnsAfter(vSheet.getMaxColumns(), maxColNeeded - vSheet.getMaxColumns());
+ vSheet.insertColumnsAfter(vSheet.getMaxColumns(), maxColNeeded - vSheet.getMaxColumns());
 }
 
 const vRange = vSheet.getRange(2, 1, vLastRow - 1, maxColNeeded);
@@ -1049,34 +1049,34 @@ const vFormulas = vRange.getFormulas();
 
 const vUpdatesMap = {};
 vUpdates.forEach(u => {
-  const key = u.name.trim().toLowerCase();
-  if (!vUpdatesMap[key]) {
-      vUpdatesMap[key] = { groupIC: null, meetIC: null, dismissIC: null };
-  }
-  if (u.groupIC !== undefined) vUpdatesMap[key].groupIC = u.groupIC === true;
-  if (u.meetIC !== undefined) vUpdatesMap[key].meetIC = u.meetIC === true;
-  if (u.dismissIC !== undefined) vUpdatesMap[key].dismissIC = u.dismissIC === true;
+ const key = u.name.trim().toLowerCase();
+ if (!vUpdatesMap[key]) {
+     vUpdatesMap[key] = { groupIC: null, meetIC: null, dismissIC: null };
+ }
+ if (u.groupIC !== undefined) vUpdatesMap[key].groupIC = u.groupIC === true;
+ if (u.meetIC !== undefined) vUpdatesMap[key].meetIC = u.meetIC === true;
+ if (u.dismissIC !== undefined) vUpdatesMap[key].dismissIC = u.dismissIC === true;
 });
 
 let changed = false;
 for (let i = 0; i < vData.length; i++) {
-  const name = vData[i][vNameIdx] ? vData[i][vNameIdx].toString().trim().toLowerCase() : "";
-  if (name && vUpdatesMap.hasOwnProperty(name)) {
-     const upd = vUpdatesMap[name];
-     if (upd.groupIC !== null && vData[i][vGroupICIdx] !== upd.groupIC) {
-         vData[i][vGroupICIdx] = upd.groupIC; vFormulas[i][vGroupICIdx] = ""; changed = true;
-     }
-     if (upd.meetIC !== null && vData[i][vMeetICIdx] !== upd.meetIC) {
-         vData[i][vMeetICIdx] = upd.meetIC; vFormulas[i][vMeetICIdx] = ""; changed = true;
-     }
-     if (upd.dismissIC !== null && vData[i][vDismissICIdx] !== upd.dismissIC) {
-         vData[i][vDismissICIdx] = upd.dismissIC; vFormulas[i][vDismissICIdx] = ""; changed = true;
-     }
-  }
+ const name = vData[i][vNameIdx] ? vData[i][vNameIdx].toString().trim().toLowerCase() : "";
+ if (name && vUpdatesMap.hasOwnProperty(name)) {
+    const upd = vUpdatesMap[name];
+    if (upd.groupIC !== null && vData[i][vGroupICIdx] !== upd.groupIC) {
+        vData[i][vGroupICIdx] = upd.groupIC; vFormulas[i][vGroupICIdx] = ""; changed = true;
+    }
+    if (upd.meetIC !== null && vData[i][vMeetICIdx] !== upd.meetIC) {
+        vData[i][vMeetICIdx] = upd.meetIC; vFormulas[i][vMeetICIdx] = ""; changed = true;
+    }
+    if (upd.dismissIC !== null && vData[i][vDismissICIdx] !== upd.dismissIC) {
+        vData[i][vDismissICIdx] = upd.dismissIC; vFormulas[i][vDismissICIdx] = ""; changed = true;
+    }
+ }
 }
 if (changed) {
-  let output = vData.map((vals, i) => vals.map((v, c) => vFormulas[i][c] !== "" ? vFormulas[i][c] : v));
-  vRange.setValues(output);
+ let output = vData.map((vals, i) => vals.map((v, c) => vFormulas[i][c] !== "" ? vFormulas[i][c] : v));
+ vRange.setValues(output);
 }
 }
 }
@@ -1233,10 +1233,10 @@ traineeIntendedGroup.set(name, intendedGroup);
 if (volPairedStr) {
 const vols = volPairedStr.split(/[,|\n]+/).map(v => v.trim().toLowerCase()).filter(v => v);
 vols.forEach(v => {
-  if (!volIntendedGroups.has(v)) volIntendedGroups.set(v, new Set());
-  if (intendedGroup !== "") {
-    volIntendedGroups.get(v).add(intendedGroup);
-  }
+ if (!volIntendedGroups.has(v)) volIntendedGroups.set(v, new Set());
+ if (intendedGroup !== "") {
+   volIntendedGroups.get(v).add(intendedGroup);
+ }
 });
 }
 }
@@ -1254,10 +1254,10 @@ let hasConflict = false;
 if (volPairedStr) {
 const vols = volPairedStr.split(/[,|\n]+/).map(v => v.trim().toLowerCase()).filter(v => v);
 for (let v of vols) {
-  if (volIntendedGroups.has(v) && volIntendedGroups.get(v).size > 1) {
-    hasConflict = true;
-    break;
-  }
+ if (volIntendedGroups.has(v) && volIntendedGroups.get(v).size > 1) {
+   hasConflict = true;
+   break;
+ }
 }
 }
 
@@ -1381,10 +1381,10 @@ let meetingLocs = []; let dismissalLocs = []; let busJunctures = [];
 const infoSheet = ss.getSheetByName("OutingInformation");
 if (infoSheet) {
 try {
-  const ext = extractLocations(infoSheet);
-  meetingLocs = ext.meetLocs;
-  dismissalLocs = ext.disLocs;
-  busJunctures = ext.busJuncs;
+ const ext = extractLocations(infoSheet);
+ meetingLocs = ext.meetLocs;
+ dismissalLocs = ext.disLocs;
+ busJunctures = ext.busJuncs;
 } catch(e) {}
 }
 
@@ -1407,55 +1407,55 @@ if (nameIdx === -1) nameIdx = 0;
 let junctures = [];
 const junctureColMap = {}; 
 headers.forEach((h, i) => {
-  const str = String(h);
-  if (str.startsWith("[Att] ")) {
-      const jName = str.substring(6).trim();
-      junctures.push(jName);
-      junctureColMap[jName] = i;
-  } else if (str.startsWith("[Bus] ")) {
-      const bName = str.substring(6).trim();
-      junctures.push('__BUS__' + bName);
-      junctureColMap['__BUS__' + bName] = i;
-  }
+ const str = String(h);
+ if (str.startsWith("[Att] ")) {
+     const jName = str.substring(6).trim();
+     junctures.push(jName);
+     junctureColMap[jName] = i;
+ } else if (str.startsWith("[Bus] ")) {
+     const bName = str.substring(6).trim();
+     junctures.push('__BUS__' + bName);
+     junctureColMap['__BUS__' + bName] = i;
+ }
 });
 
 // ENFORCE "Meeting" Juncture to be injected if missing
 let injectedMeeting = false;
 if (!junctures.includes("Meeting") && lastRow >= 2) {
-  const targetInsertCol = 27; // Explicitly map to Column AA (A=1... AA=27)
-  
-  if (lastCol < targetInsertCol) {
-      sheet.insertColumnsAfter(lastCol, targetInsertCol - lastCol);
-  } else {
-      sheet.insertColumnBefore(targetInsertCol);
-  }
-  
-  sheet.getRange(2, targetInsertCol).setValue("[Att] Meeting");
-  if (lastRow > 2) {
-      sheet.getRange(3, targetInsertCol, lastRow - 2).insertCheckboxes();
-  }
-  SpreadsheetApp.flush();
-  
-  lastCol = sheet.getLastColumn();
-  headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
-  junctures = [];
-  headers.forEach((h, i) => {
-      const str = String(h);
-      if (str.startsWith("[Att] ")) {
-          const jName = str.substring(6).trim();
-          junctures.push(jName);
-          junctureColMap[jName] = i;
-      } else if (str.startsWith("[Bus] ")) {
-          const bName = str.substring(6).trim();
-          junctures.push('__BUS__' + bName);
-          junctureColMap['__BUS__' + bName] = i;
-      }
-  });
-  injectedMeeting = true;
+ const targetInsertCol = 27; // Explicitly map to Column AA (A=1... AA=27)
+ 
+ if (lastCol < targetInsertCol) {
+     sheet.insertColumnsAfter(lastCol, targetInsertCol - lastCol);
+ } else {
+     sheet.insertColumnBefore(targetInsertCol);
+ }
+ 
+ sheet.getRange(2, targetInsertCol).setValue("[Att] Meeting");
+ if (lastRow > 2) {
+     sheet.getRange(3, targetInsertCol, lastRow - 2).insertCheckboxes();
+ }
+ SpreadsheetApp.flush();
+ 
+ lastCol = sheet.getLastColumn();
+ headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+ junctures = [];
+ headers.forEach((h, i) => {
+     const str = String(h);
+     if (str.startsWith("[Att] ")) {
+         const jName = str.substring(6).trim();
+         junctures.push(jName);
+         junctureColMap[jName] = i;
+     } else if (str.startsWith("[Bus] ")) {
+         const bName = str.substring(6).trim();
+         junctures.push('__BUS__' + bName);
+         junctureColMap['__BUS__' + bName] = i;
+     }
+ });
+ injectedMeeting = true;
 }
 
 if (junctures.includes("Meeting")) {
-  junctures = ["Meeting", ...junctures.filter(j => j !== "Meeting")];
+ junctures = ["Meeting", ...junctures.filter(j => j !== "Meeting")];
 }
 
 const extraDataMap = buildExtraDataMap(ss);
@@ -1465,43 +1465,43 @@ const attendance = { '__GONE_HOME__': {} };
 const busAttendance = {};
 
 junctures.forEach(j => {
-  if (j.startsWith('__BUS__')) {
-      busAttendance[j.substring(7)] = {};
-  } else {
-      attendance[j] = {};
-  }
+ if (j.startsWith('__BUS__')) {
+     busAttendance[j.substring(7)] = {};
+ } else {
+     attendance[j] = {};
+ }
 });
 
 data.forEach(row => {
-  const name = String(row[nameIdx]).trim();
-  if (name) {
-      participants.push({ 
-          name: name, 
-          group: String(row[0]).trim(), 
-          caregivers: cgIdx > -1 ? parseInt(row[cgIdx]) || 0 : 0, 
-          volPaired: volIdx > -1 ? String(row[volIdx]).trim() : "",
-          meetingLoc: meetIdx > -1 ? String(row[meetIdx]).trim() : "",
-          dismissalLoc: dismissIdx > -1 ? String(row[dismissIdx]).trim() : "",
-          extra: extraDataMap[name.toLowerCase()] || {}
-      });
+ const name = String(row[nameIdx]).trim();
+ if (name) {
+     participants.push({ 
+         name: name, 
+         group: String(row[0]).trim(), 
+         caregivers: cgIdx > -1 ? parseInt(row[cgIdx]) || 0 : 0, 
+         volPaired: volIdx > -1 ? String(row[volIdx]).trim() : "",
+         meetingLoc: meetIdx > -1 ? String(row[meetIdx]).trim() : "",
+         dismissalLoc: dismissIdx > -1 ? String(row[dismissIdx]).trim() : "",
+         extra: extraDataMap[name.toLowerCase()] || {}
+     });
 
-      attendance['__GONE_HOME__'][name] = (goneHomeIdx > -1 && (row[goneHomeIdx] === true || String(row[goneHomeIdx]).toLowerCase() === 'true'));
-      junctures.forEach(j => {
-          const val = row[junctureColMap[j]];
-          if (j.startsWith('__BUS__')) {
-              busAttendance[j.substring(7)][name] = val !== "" ? val : "";
-          } else {
-              attendance[j][name] = (val === true || String(val).toLowerCase() === 'true');
-          }
-      });
-  }
+     attendance['__GONE_HOME__'][name] = (goneHomeIdx > -1 && (row[goneHomeIdx] === true || String(row[goneHomeIdx]).toLowerCase() === 'true'));
+     junctures.forEach(j => {
+         const val = row[junctureColMap[j]];
+         if (j.startsWith('__BUS__')) {
+             busAttendance[j.substring(7)][name] = val !== "" ? val : "";
+         } else {
+             attendance[j][name] = (val === true || String(val).toLowerCase() === 'true');
+         }
+     });
+ }
 });
 
 const result = { success: true, participants: participants, junctures: junctures.filter(j => !j.startsWith('__BUS__')), busJunctures: busJunctures, attendance: attendance, busAttendance: busAttendance, meetingLocs: meetingLocs, dismissalLocs: dismissalLocs };
 putLargeCache(cacheKey, JSON.stringify(result));
 
 if (injectedMeeting) {
-  invalidateCaches(sheetUrl);
+ invalidateCaches(sheetUrl);
 }
 return result;
 } catch(e) { 
@@ -1539,29 +1539,29 @@ let targetHeader;
 let isBus = false;
 
 if (junctureName === '__GONE_HOME__') {
-  targetHeader = "[Sys] Gone Home";
+ targetHeader = "[Sys] Gone Home";
 } else if (junctureName.startsWith('__BUS__')) {
-  targetHeader = `[Bus] ${junctureName.substring(7)}`;
-  isBus = true;
+ targetHeader = `[Bus] ${junctureName.substring(7)}`;
+ isBus = true;
 } else {
-  targetHeader = `[Att] ${junctureName}`;
+ targetHeader = `[Att] ${junctureName}`;
 }
 
 let juncIdx = headers.indexOf(targetHeader);
 
 if (juncIdx === -1) {
-  const newColIdx = lastCol + 1;
-  sheet.insertColumnAfter(lastCol);
-  sheet.getRange(2, newColIdx).setValue(targetHeader);
-  if (!isBus) {
-      sheet.getRange(3, newColIdx, lastRow - 2).insertCheckboxes();
-  } else {
-      sheet.getRange(3, newColIdx, lastRow - 2).clearDataValidations();
-  }
-  SpreadsheetApp.flush();
-  headers = sheet.getRange(2, 1, 1, newColIdx).getValues()[0];
-  lastCol = newColIdx;
-  juncIdx = newColIdx - 1;
+ const newColIdx = lastCol + 1;
+ sheet.insertColumnAfter(lastCol);
+ sheet.getRange(2, newColIdx).setValue(targetHeader);
+ if (!isBus) {
+     sheet.getRange(3, newColIdx, lastRow - 2).insertCheckboxes();
+ } else {
+     sheet.getRange(3, newColIdx, lastRow - 2).clearDataValidations();
+ }
+ SpreadsheetApp.flush();
+ headers = sheet.getRange(2, 1, 1, newColIdx).getValues()[0];
+ lastCol = newColIdx;
+ juncIdx = newColIdx - 1;
 }
 
 const juncRange = sheet.getRange(3, juncIdx + 1, lastRow - 2);
@@ -1572,18 +1572,18 @@ updates.forEach(u => updateMap[u.name.toLowerCase()] = u.status);
 
 let changed = false;
 for (let i = 0; i < namesData.length; i++) {
-  const name = String(namesData[i][0]).trim().toLowerCase();
-  if (name && updateMap.hasOwnProperty(name)) {
-      if (juncData[i][0] !== updateMap[name]) {
-          juncData[i][0] = updateMap[name];
-          changed = true;
-      }
-  }
+ const name = String(namesData[i][0]).trim().toLowerCase();
+ if (name && updateMap.hasOwnProperty(name)) {
+     if (juncData[i][0] !== updateMap[name]) {
+         juncData[i][0] = updateMap[name];
+         changed = true;
+     }
+ }
 }
 
 if (changed) {
-  juncRange.setValues(juncData);
-  changedGlobal = true;
+ juncRange.setValues(juncData);
+ changedGlobal = true;
 }
 }
 
@@ -1615,14 +1615,14 @@ const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
 const targetHeader = `[Att] ${junctureName.trim()}`;
 
 if (headers.includes(targetHeader)) {
-  return { success: false, message: "Juncture already exists." };
+ return { success: false, message: "Juncture already exists." };
 }
 
 const newColIdx = lastCol + 1;
 sheet.insertColumnAfter(lastCol);
 sheet.getRange(2, newColIdx).setValue(targetHeader);
 if (lastRow > 2) {
-  sheet.getRange(3, newColIdx, lastRow - 2).insertCheckboxes();
+ sheet.getRange(3, newColIdx, lastRow - 2).insertCheckboxes();
 }
 SpreadsheetApp.flush();
 atomicCacheRebuild(sheetUrl);
@@ -1640,7 +1640,7 @@ const lock = LockService.getScriptLock();
 try {
 lock.waitLock(15000);
 if (junctureName === "Meeting") {
-  return { success: false, message: "The default 'Meeting' juncture cannot be deleted." };
+ return { success: false, message: "The default 'Meeting' juncture cannot be deleted." };
 }
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
 const sheet = getGroupingSheet(ss);
@@ -1655,10 +1655,10 @@ const targetHeader = `[Att] ${junctureName.trim()}`;
 const juncIdx = headers.indexOf(targetHeader);
 
 if (juncIdx > -1) {
-  sheet.deleteColumn(juncIdx + 1);
-  SpreadsheetApp.flush();
-  atomicCacheRebuild(sheetUrl);
-  return fetchCommAttendance(sheetUrl, true, true);
+ sheet.deleteColumn(juncIdx + 1);
+ SpreadsheetApp.flush();
+ atomicCacheRebuild(sheetUrl);
+ return fetchCommAttendance(sheetUrl, true, true);
 }
 
 return { success: false, message: "Juncture not found." };
@@ -1883,8 +1883,8 @@ lock.waitLock(15000);
 res = _submitAttendanceDataInner(form);
 
 if (res && res.success) {
-  SpreadsheetApp.flush();
-  atomicCacheRebuild(form.sheetUrl); // Write-Through Cache
+ SpreadsheetApp.flush();
+ atomicCacheRebuild(form.sheetUrl); // Write-Through Cache
 }
 } catch(e) {
 return { success: false, message: e.toString() };
@@ -1993,7 +1993,12 @@ return { success: true, message: "New volunteer added successfully & Attendance 
 }
 return { success: false, message: "Record not found to update for: " + name };
 } else {
+// Existing Row Logic - BATCHED UPDATE
 targetRow = cell.getRow();
+const rowRange = sheet.getRange(targetRow, 1, 1, rawHeaders.length);
+const rowData = rowRange.getValues()[0];
+let hasChanges = false;
+
 for (const [cleanKey, value] of Object.entries(form.data)) {
 const normKey = normalizeHeader(cleanKey);
 for(let i=0; i<rawHeaders.length; i++) {
@@ -2006,15 +2011,22 @@ const isMatch = normHeader === normKey ||
 
 if (isMatch) {
 if (normHeader.includes("project")) {
-break;
+break; // Project is locked after initial assignment typically unless handled otherwise
 }
 
 if (normHeader.includes("attending")) attendingStatus = value.toString().toLowerCase();
 
-sheet.getRange(targetRow, i + 1).setValue(value);
+if (rowData[i] !== value) {
+rowData[i] = value;
+hasChanges = true;
+}
 break;
 }
 }
+}
+
+if (hasChanges) {
+rowRange.setValues([rowData]);
 }
 
 // --- LOGICAL CASCADE: Check Attendance Status ---
@@ -2029,7 +2041,7 @@ if (tSheet) {
 const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
 const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
 if (tVolPairedIdx > -1) {
- tSheet.getRange(targetRow, tVolPairedIdx + 1).setValue("");
+tSheet.getRange(targetRow, tVolPairedIdx + 1).setValue("");
 }
 }
 // 2. Delete row from Groupings
@@ -2037,9 +2049,9 @@ if (gSheet) {
 const bValues = gSheet.getRange("B:B").getValues();
 const nameClean = name.toLowerCase();
 for (let i = bValues.length - 1; i >= 2; i--) {
- if (bValues[i][0] && bValues[i][0].toString().trim().toLowerCase() === nameClean) {
-     gSheet.deleteRow(i + 1);
- }
+if (bValues[i][0] && bValues[i][0].toString().trim().toLowerCase() === nameClean) {
+    gSheet.deleteRow(i + 1);
+}
 }
 }
 } else if (attendingStatus === 'y') {
@@ -2050,64 +2062,67 @@ const nameClean = name.toLowerCase();
 let found = false;
 
 for (let i = 2; i < bValues.length; i++) {
- if (bValues[i][0] && bValues[i][0].toString().trim().toLowerCase() === nameClean) {
-     found = true;
-     break;
- }
+if (bValues[i][0] && bValues[i][0].toString().trim().toLowerCase() === nameClean) {
+    found = true;
+    break;
+}
 }
 
 if (!found) {
- let insertRow = -1;
- for (let i = 2; i < bValues.length; i++) {
-     if (!bValues[i][0] || bValues[i][0].toString().trim() === "") {
-         insertRow = i + 1;
-         break;
-     }
- }
- if (insertRow === -1) {
-     insertRow = gSheet.getLastRow() + 1;
- }
- if (insertRow < 3) insertRow = 3;
- 
- const tSheetName = tSheet ? tSheet.getName() : "Trainee Attendance";
- const mSheet = ss.getSheetByName("MISC PriVol");
- const mSheetName = mSheet ? mSheet.getName() : "MISC PriVol";
- 
- gSheet.getRange(insertRow, 2).setValue(name);
- 
- gSheet.getRange(insertRow, 1).setFormula(`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!L:L,"Not Found")`);
- gSheet.getRange(insertRow, 3).setFormula(`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!O:O,"Not Found")`);
- gSheet.getRange(insertRow, 4).setFormula(`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!C:C,"Not Found")`);
- gSheet.getRange(insertRow, 5).setFormula(`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!D:D,"Not Found")`);
- 
- // Look for Juncture checkboxes dynamically
- const gHeaders = gSheet.getRange(2, 1, 1, gSheet.getLastColumn()).getValues()[0];
- let checkboxColsCount = 0;
- let firstCheckboxCol = -1;
- for(let h=0; h<gHeaders.length; h++){
-     const str = String(gHeaders[h]);
-     if(str.startsWith("[Att] ") || str === "[Sys] Gone Home") {
-         if(firstCheckboxCol === -1) firstCheckboxCol = h + 1;
-         checkboxColsCount++;
-     }
- }
- 
- if (checkboxColsCount > 0 && firstCheckboxCol > -1) {
-     gSheet.getRange(insertRow, firstCheckboxCol, 1, checkboxColsCount).insertCheckboxes();
- } else {
-     gSheet.getRange(insertRow, 6, 1, 7).insertCheckboxes(); // Fallback to original range if headers not clear
- }
- 
- // Remaining formulas
- const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
- const tHIdx = getColIndex(tHeaders, "remarks"); // Need reliable col lookup for remarks, fetching, etc.
- // Hardcoded logic from original structure kept for formula mapping unless dynamic mapping is required.
- gSheet.getRange(insertRow, 13).setFormula(`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!H:H,"Not Found")`);
- gSheet.getRange(insertRow, 14).setFormula(`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!G:G,"Not Found")`);
- gSheet.getRange(insertRow, 15).setFormula(`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!I:I,"Not Found")`);
- gSheet.getRange(insertRow, 16).setFormula(`=XLOOKUP(B${insertRow}, '${mSheetName}'!A:A,'${mSheetName}'!D:D,"Not Found")`);
- gSheet.getRange(insertRow, 17).setFormula(`=XLOOKUP(B${insertRow}, '${mSheetName}'!A:A,'${mSheetName}'!B:B,"Not Found")`);
- gSheet.getRange(insertRow, 18).setFormula(`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!J:J,"Not Found")`);
+let insertRow = -1;
+for (let i = 2; i < bValues.length; i++) {
+    if (!bValues[i][0] || bValues[i][0].toString().trim() === "") {
+        insertRow = i + 1;
+        break;
+    }
+}
+if (insertRow === -1) {
+    insertRow = gSheet.getLastRow() + 1;
+}
+if (insertRow < 3) insertRow = 3;
+
+const tSheetName = tSheet ? tSheet.getName() : "Trainee Attendance";
+const mSheet = ss.getSheetByName("MISC PriVol");
+const mSheetName = mSheet ? mSheet.getName() : "MISC PriVol";
+
+// BATCH COLUMNS 1 TO 5
+const block1To5 = [[
+`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!L:L,"Not Found")`,
+name,
+`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!O:O,"Not Found")`,
+`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!C:C,"Not Found")`,
+`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!D:D,"Not Found")`
+]];
+gSheet.getRange(insertRow, 1, 1, 5).setValues(block1To5);
+
+// Look for Juncture checkboxes dynamically
+const gHeaders = gSheet.getRange(2, 1, 1, gSheet.getLastColumn()).getValues()[0];
+let checkboxColsCount = 0;
+let firstCheckboxCol = -1;
+for(let h=0; h<gHeaders.length; h++){
+    const str = String(gHeaders[h]);
+    if(str.startsWith("[Att] ") || str === "[Sys] Gone Home") {
+        if(firstCheckboxCol === -1) firstCheckboxCol = h + 1;
+        checkboxColsCount++;
+    }
+}
+
+if (checkboxColsCount > 0 && firstCheckboxCol > -1) {
+    gSheet.getRange(insertRow, firstCheckboxCol, 1, checkboxColsCount).insertCheckboxes();
+} else {
+    gSheet.getRange(insertRow, 6, 1, 7).insertCheckboxes(); // Fallback to original range if headers not clear
+}
+
+// BATCH COLUMNS 13 TO 18
+const block13To18 = [[
+`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!H:H,"Not Found")`,
+`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!G:G,"Not Found")`,
+`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!I:I,"Not Found")`,
+`=XLOOKUP(B${insertRow}, '${mSheetName}'!A:A,'${mSheetName}'!D:D,"Not Found")`,
+`=XLOOKUP(B${insertRow}, '${mSheetName}'!A:A,'${mSheetName}'!B:B,"Not Found")`,
+`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!J:J,"Not Found")`
+]];
+gSheet.getRange(insertRow, 13, 1, 6).setValues(block13To18);
 }
 }
 }
@@ -2118,25 +2133,25 @@ if (!tSheet) tSheet = ss.getSheetByName("Trainee Attendance ");
 if (tSheet) {
 const tLastRow = tSheet.getLastRow();
 if (tLastRow > 1) {
- const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
- const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
- if (tVolPairedIdx > -1) {
-     const tRange = tSheet.getRange(2, 1, tLastRow - 1, tSheet.getLastColumn());
-     const tData = tRange.getValues();
-     let tChanged = false;
-     
-     const nameClean = name.toLowerCase();
-     for(let k=0; k<tData.length; k++){
-         const currentPaired = tData[k][tVolPairedIdx] ? tData[k][tVolPairedIdx].toString() : "";
-         if (currentPaired.toLowerCase().includes(nameClean)) {
-             const vols = currentPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v);
-             const updatedVols = vols.filter(v => v.toLowerCase() !== nameClean);
-             tData[k][tVolPairedIdx] = updatedVols.join(', ');
-             tChanged = true;
-         }
-     }
-     if (tChanged) tRange.setValues(tData);
- }
+const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
+const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
+if (tVolPairedIdx > -1) {
+    const tRange = tSheet.getRange(2, 1, tLastRow - 1, tSheet.getLastColumn());
+    const tData = tRange.getValues();
+    let tChanged = false;
+    
+    const nameClean = name.toLowerCase();
+    for(let k=0; k<tData.length; k++){
+        const currentPaired = tData[k][tVolPairedIdx] ? tData[k][tVolPairedIdx].toString() : "";
+        if (currentPaired.toLowerCase().includes(nameClean)) {
+            const vols = currentPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v);
+            const updatedVols = vols.filter(v => v.toLowerCase() !== nameClean);
+            tData[k][tVolPairedIdx] = updatedVols.join(', ');
+            tChanged = true;
+        }
+    }
+    if (tChanged) tRange.setValues(tData);
+}
 }
 }
 }
