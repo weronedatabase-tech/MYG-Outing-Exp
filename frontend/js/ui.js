@@ -106,7 +106,7 @@ if (viewId === 'settings') loadSettings();
 
 window.handleNavBack = function() {
 if (currentActiveView === 'comm-attendance') {
-if (window.currentSheetList && window.currentSheetList.length === 1) {
+if (currentSheetList && currentSheetList.length === 1) {
 showView('landing');
 } else {
 showView('actual-attendance');
@@ -115,7 +115,7 @@ showView('actual-attendance');
 if (typeof isFilteredManualPairingMode !== 'undefined' && isFilteredManualPairingMode) {
 isFilteredManualPairingMode = false;
 
-let targetView = window.filteredManualPairingSourceView || 'comm';
+let targetView = typeof filteredManualPairingSourceView !== 'undefined' && filteredManualPairingSourceView ? filteredManualPairingSourceView : 'comm';
 
 if (targetView === 'manual-pairing') {
 // Re-initialize standard manual pairing to effectively exit filtered mode safely
@@ -147,12 +147,12 @@ if(icon) icon.classList.add('fa-spin');
 
 // Snapshot View State to Restore After Reload
 const stateToSave = {
-   view: window.currentActiveView,
-   commSheet: window.currentCommAttSheetUrl || null,
-   pairSheet: window.currentManualPairingSheetUrl || null,
-   groupSheet: window.currentGroupingSheetUrl || null,
-   isFiltered: window.isFilteredManualPairingMode || false,
-   filteredSource: window.filteredManualPairingSourceView || null
+   view: currentActiveView,
+   commSheet: currentCommAttSheetUrl || null,
+   pairSheet: currentManualPairingSheetUrl || null,
+   groupSheet: currentGroupingSheetUrl || null,
+   isFiltered: typeof isFilteredManualPairingMode !== 'undefined' ? isFilteredManualPairingMode : false,
+   filteredSource: typeof filteredManualPairingSourceView !== 'undefined' ? filteredManualPairingSourceView : null
 };
 sessionStorage.setItem('restoreState', JSON.stringify(stateToSave));
 
@@ -286,8 +286,8 @@ window[filterCallbackName]();
 
 function updateUnpairedNotification(count) {
 // Update Comm Dashboard List
-if(window.currentSheetList) {
-window.currentSheetList.forEach((item, index) => {
+if(currentSheetList) {
+currentSheetList.forEach((item, index) => {
 if (item.sheetUrl === currentCommAttSheetUrl || item.sheetUrl === currentManualPairingSheetUrl || (typeof currentGroupingSheetUrl !== 'undefined' && item.sheetUrl === currentGroupingSheetUrl)) {
 const pendingDiv = document.getElementById(`pending-badge-${index}`);
 if (pendingDiv) {
@@ -598,7 +598,11 @@ if(infoModal) infoModal.classList.add('hidden');
 // --- QUICK EDIT LOGIC VIA LONG PRESS ---
 
 function openQuickEditModal(name, role) {
-let sheetUrl = window.currentCommAttSheetUrl || window.currentManualPairingSheetUrl || window.currentGroupingSheetUrl;
+let sheetUrl = null;
+if (currentActiveView === 'comm-attendance') sheetUrl = currentCommAttSheetUrl;
+else if (currentActiveView === 'manual-pairing') sheetUrl = currentManualPairingSheetUrl;
+else if (currentActiveView === 'manual-grouping') sheetUrl = currentGroupingSheetUrl;
+
 if (!sheetUrl) return alert("Error: Context URL lost.");
 
 const content = document.getElementById('personInfoContent');

@@ -70,12 +70,12 @@ const spinner = document.getElementById(loadingId);
 const listContainer = document.getElementById('upcomingList');
 
 // STATE-AWARENESS: Prevent DOM wipe if data exists
-if (!forceRefresh && window.currentSheetList && window.currentSheetList.length > 0) {
+if (!forceRefresh && currentSheetList && currentSheetList.length > 0) {
 // Ensure selector is populated for the current view if empty
 if (selector && selector.options.length <= 1) {
   selector.innerHTML = '';
   selector.disabled = false;
-  window.currentSheetList.forEach(item => {
+  currentSheetList.forEach(item => {
       let opt = document.createElement('option');
       opt.value = item.sheetUrl;
       opt.text = item.displayName;
@@ -86,7 +86,7 @@ if (selector && selector.options.length <= 1) {
 
 if (viewId === 'volunteer') {
   resetVolForm();
-} else if (viewId === 'actual-attendance' && window.currentSheetList.length === 1) {
+} else if (viewId === 'actual-attendance' && currentSheetList.length === 1) {
   setTimeout(() => openLiveAttendance(), 100);
 }
 
@@ -109,7 +109,7 @@ if (viewId === 'comm' && listContainer) {
       }
       return; // ZERO LATENCY EXIT
   } else {
-      renderCommDashboardCards(window.currentSheetList);
+      renderCommDashboardCards(currentSheetList);
   }
 }
 return;
@@ -161,7 +161,7 @@ selector.disabled = false;
 selector.innerHTML = '';
 
 if (res.success) {
-  window.currentSheetList = res.data;
+  currentSheetList = res.data;
   if(res.data.length > 0) {
       res.data.forEach(item => {
           let opt = document.createElement('option');
@@ -496,7 +496,7 @@ dTimes[i].value = config.dismissalTimes[i] || "";
 dBuses[i].checked = config.dismissalBuses && config.dismissalBuses[i] === true;
 }
 
-currentEditSheetUrl = window.currentSheetList[index].sheetUrl;
+currentEditSheetUrl = currentSheetList[index].sheetUrl;
 
 const modal = document.getElementById('editModal'); 
 const modalPanel = document.getElementById('editModalPanel');
