@@ -307,15 +307,6 @@ return h.toString().toLowerCase().replace(/[^a-z0-9]/g, "").includes(key);
 });
 }
 
-function getGroupingSheet(ss) {
-const variations = ["Groupings", "Grouping", "Groupings ", "Grouping "];
-for (let v of variations) {
-let sheet = ss.getSheetByName(v);
-if (sheet) return sheet;
-}
-return null;
-}
-
 // --- SHARED HELPER: DYNAMIC LOCATION EXTRACTOR ---
 function extractLocations(infoSheet) {
 let meetLocs = [], disLocs = [], busJuncs = [];
@@ -808,9 +799,8 @@ const ss = SpreadsheetApp.openByUrl(sheetUrl);
 let tSheet = ss.getSheetByName("Trainee Attendance");
 if (!tSheet) tSheet = ss.getSheetByName("Trainee Attendance ");
 const vSheet = ss.getSheetByName("Volunteer Attendance");
-const gSheet = getGroupingSheet(ss);
 
-if (!tSheet || !vSheet || !gSheet) return { success: false, message: "Missing Tabs" };
+if (!tSheet || !vSheet) return { success: false, message: "Missing Tabs" };
 
 let meetingLocs = []; let dismissalLocs = [];
 const infoSheet = ss.getSheetByName("OutingInformation");
@@ -835,6 +825,7 @@ if (tLastRow > 1) {
  const tProjIdx = getColIndex(tHeaders, "project");
  const tCareIdx = getColIndex(tHeaders, "caregiver");
  const tGroupIdx = getColIndex(tHeaders, "outing grouping");
+ const goneHomeIdx = tHeaders.indexOf("[Sys] Gone Home");
 
  tData.forEach(row => {
      const name = row[tNameIdx] ? row[tNameIdx].toString().trim() : "";
@@ -849,29 +840,11 @@ if (tLastRow > 1) {
              group: (tGroupIdx > -1 && row[tGroupIdx]) ? row[tGroupIdx].toString().trim() : "",
              isAttendingN: att === 'n',
              isAttendingUnknown: att === '',
-             isGoneHome: false,
+             isGoneHome: (goneHomeIdx > -1 && (row[goneHomeIdx] === true || String(row[goneHomeIdx]).toLowerCase() === 'true')),
              extra: extraDataMap[name.toLowerCase()] || {}
          });
      }
  });
-}
-
-const gLastRow = gSheet.getLastRow();
-const gHeaders = gLastRow > 1 ? gSheet.getRange(2, 1, 1, gSheet.getLastColumn()).getValues()[0] : [];
-const goneHomeIdx = gHeaders.indexOf("[Sys] Gone Home");
-let gNameIdx = getColIndex(gHeaders, "traineename");
-if (gNameIdx === -1) gNameIdx = getColIndex(gHeaders, "trainee");
-if (gNameIdx === -1) gNameIdx = getColIndex(gHeaders, "name");
-if (gNameIdx === -1) gNameIdx = 0;
-
-if (goneHomeIdx > -1 && gLastRow > 2) {
- const gData = gSheet.getRange(3, 1, gLastRow - 2, gSheet.getLastColumn()).getValues();
- const goneHomeMap = {};
- gData.forEach(row => {
-     const name = String(row[gNameIdx]).trim().toLowerCase();
-     if (name) goneHomeMap[name] = (row[goneHomeIdx] === true || String(row[goneHomeIdx]).toLowerCase() === 'true');
- });
- trainees.forEach(t => { if (goneHomeMap[t.name.toLowerCase()]) t.isGoneHome = true; });
 }
 
 const vLastRow = vSheet.getLastRow();
@@ -1374,8 +1347,8 @@ if (cached) { try { return JSON.parse(cached); } catch(e) {} }
 }
 
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
-const sheet = getGroupingSheet(ss);
-if (!sheet) return { success: false, message: "Groupings tab not found." };
+let sheet = ss.getSheetByName("Trainee Attendance") || ss.getSheetByName("Trainee Attendance ");
+if (!sheet) return { success: false, message: "Trainee Attendance tab not found." };
 
 let meetingLocs = []; let dismissalLocs = []; let busJunctures = [];
 const infoSheet = ss.getSheetByName("OutingInformation");
@@ -1392,16 +1365,16 @@ const lastRow = sheet.getLastRow();
 let lastCol = sheet.getLastColumn();
 if (lastRow < 2) return { success: true, participants: [], junctures: ["Meeting"], busJunctures: busJunctures, attendance: { 'Meeting': {}, '__GONE_HOME__': {} }, busAttendance: {}, meetingLocs: meetingLocs, dismissalLocs: dismissalLocs };
 
-let headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
-const cgIdx = getColIndex(headers, "caregiversfollowing");
-const volIdx = getColIndex(headers, "volunteerpaired");
-const meetIdx = getColIndex(headers, "meetinglocation");
-const dismissIdx = getColIndex(headers, "dismissallocation");
+let headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+const cgIdx = getColIndex(headers, "caregiver");
+const volIdx = getColIndex(headers, "vol paired");
+const meetIdx = getColIndex(headers, "meeting location");
+const dismissIdx = getColIndex(headers, "dismissal location");
+const groupIdx = getColIndex(headers, "outing grouping");
+const attIdx = getColIndex(headers, "attending");
 const goneHomeIdx = headers.indexOf("[Sys] Gone Home");
 
-let nameIdx = getColIndex(headers, "traineename");
-if (nameIdx === -1) nameIdx = getColIndex(headers, "trainee");
-if (nameIdx === -1) nameIdx = getColIndex(headers, "name");
+let nameIdx = getColIndex(headers, "name");
 if (nameIdx === -1) nameIdx = 0; 
 
 let junctures = [];
@@ -1421,23 +1394,17 @@ headers.forEach((h, i) => {
 
 // ENFORCE "Meeting" Juncture to be injected if missing
 let injectedMeeting = false;
-if (!junctures.includes("Meeting") && lastRow >= 2) {
- const targetInsertCol = 27; // Explicitly map to Column AA (A=1... AA=27)
+if (!junctures.includes("Meeting") && lastRow >= 1) {
+ const targetInsertCol = lastCol + 1;
  
- if (lastCol < targetInsertCol) {
-     sheet.insertColumnsAfter(lastCol, targetInsertCol - lastCol);
- } else {
-     sheet.insertColumnBefore(targetInsertCol);
- }
- 
- sheet.getRange(2, targetInsertCol).setValue("[Att] Meeting");
- if (lastRow > 2) {
-     sheet.getRange(3, targetInsertCol, lastRow - 2).insertCheckboxes();
+ sheet.getRange(1, targetInsertCol).setValue("[Att] Meeting");
+ if (lastRow > 1) {
+     sheet.getRange(2, targetInsertCol, lastRow - 1).insertCheckboxes();
  }
  SpreadsheetApp.flush();
  
- lastCol = sheet.getLastColumn();
- headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+ lastCol = targetInsertCol;
+ headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
  junctures = [];
  headers.forEach((h, i) => {
      const str = String(h);
@@ -1459,7 +1426,7 @@ if (junctures.includes("Meeting")) {
 }
 
 const extraDataMap = buildExtraDataMap(ss);
-const data = lastRow > 2 ? sheet.getRange(3, 1, lastRow - 2, lastCol).getValues() : [];
+const data = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, lastCol).getValues() : [];
 const participants = [];
 const attendance = { '__GONE_HOME__': {} };
 const busAttendance = {};
@@ -1474,10 +1441,12 @@ junctures.forEach(j => {
 
 data.forEach(row => {
  const name = String(row[nameIdx]).trim();
- if (name) {
+ const att = attIdx > -1 && row[attIdx] ? String(row[attIdx]).toLowerCase().trim() : "";
+ 
+ if (name && att === 'y') {
      participants.push({ 
          name: name, 
-         group: String(row[0]).trim(), 
+         group: groupIdx > -1 ? String(row[groupIdx]).trim() : "", 
          caregivers: cgIdx > -1 ? parseInt(row[cgIdx]) || 0 : 0, 
          volPaired: volIdx > -1 ? String(row[volIdx]).trim() : "",
          meetingLoc: meetIdx > -1 ? String(row[meetIdx]).trim() : "",
@@ -1516,22 +1485,20 @@ const lock = LockService.getScriptLock();
 try {
 lock.waitLock(15000);
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
-const sheet = getGroupingSheet(ss);
-if (!sheet) return { success: false, message: "Groupings tab not found." };
+let sheet = ss.getSheetByName("Trainee Attendance") || ss.getSheetByName("Trainee Attendance ");
+if (!sheet) return { success: false, message: "Trainee Attendance tab not found." };
 
 let lastRow = sheet.getLastRow();
 let lastCol = sheet.getLastColumn();
 
-if (lastRow < 3) return { success: true };
+if (lastRow < 2) return { success: true };
 
-let headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+let headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-let nameIdx = getColIndex(headers, "traineename");
-if (nameIdx === -1) nameIdx = getColIndex(headers, "trainee");
-if (nameIdx === -1) nameIdx = getColIndex(headers, "name");
+let nameIdx = getColIndex(headers, "name");
 if (nameIdx === -1) nameIdx = 0;
 
-const namesData = sheet.getRange(3, nameIdx + 1, lastRow - 2).getValues();
+const namesData = sheet.getRange(2, nameIdx + 1, lastRow - 1).getValues();
 let changedGlobal = false;
 
 for (const [junctureName, updates] of Object.entries(multipleUpdates)) {
@@ -1552,19 +1519,19 @@ let juncIdx = headers.indexOf(targetHeader);
 if (juncIdx === -1) {
  const newColIdx = lastCol + 1;
  sheet.insertColumnAfter(lastCol);
- sheet.getRange(2, newColIdx).setValue(targetHeader);
+ sheet.getRange(1, newColIdx).setValue(targetHeader);
  if (!isBus) {
-     sheet.getRange(3, newColIdx, lastRow - 2).insertCheckboxes();
+     sheet.getRange(2, newColIdx, lastRow - 1).insertCheckboxes();
  } else {
-     sheet.getRange(3, newColIdx, lastRow - 2).clearDataValidations();
+     sheet.getRange(2, newColIdx, lastRow - 1).clearDataValidations();
  }
  SpreadsheetApp.flush();
- headers = sheet.getRange(2, 1, 1, newColIdx).getValues()[0];
+ headers = sheet.getRange(1, 1, 1, newColIdx).getValues()[0];
  lastCol = newColIdx;
  juncIdx = newColIdx - 1;
 }
 
-const juncRange = sheet.getRange(3, juncIdx + 1, lastRow - 2);
+const juncRange = sheet.getRange(2, juncIdx + 1, lastRow - 1);
 const juncData = juncRange.getValues();
 
 const updateMap = {};
@@ -1604,14 +1571,14 @@ const lock = LockService.getScriptLock();
 try {
 lock.waitLock(15000);
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
-const sheet = getGroupingSheet(ss);
-if (!sheet) return { success: false, message: "Groupings tab not found." };
+let sheet = ss.getSheetByName("Trainee Attendance") || ss.getSheetByName("Trainee Attendance ");
+if (!sheet) return { success: false, message: "Trainee Attendance tab not found." };
 
 const lastRow = sheet.getLastRow();
 const lastCol = sheet.getLastColumn();
-if (lastRow < 2) return { success: false, message: "Sheet is empty." };
+if (lastRow < 1) return { success: false, message: "Sheet is empty." };
 
-const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 const targetHeader = `[Att] ${junctureName.trim()}`;
 
 if (headers.includes(targetHeader)) {
@@ -1620,9 +1587,9 @@ if (headers.includes(targetHeader)) {
 
 const newColIdx = lastCol + 1;
 sheet.insertColumnAfter(lastCol);
-sheet.getRange(2, newColIdx).setValue(targetHeader);
-if (lastRow > 2) {
- sheet.getRange(3, newColIdx, lastRow - 2).insertCheckboxes();
+sheet.getRange(1, newColIdx).setValue(targetHeader);
+if (lastRow > 1) {
+ sheet.getRange(2, newColIdx, lastRow - 1).insertCheckboxes();
 }
 SpreadsheetApp.flush();
 atomicCacheRebuild(sheetUrl);
@@ -1643,14 +1610,14 @@ if (junctureName === "Meeting") {
  return { success: false, message: "The default 'Meeting' juncture cannot be deleted." };
 }
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
-const sheet = getGroupingSheet(ss);
-if (!sheet) return { success: false, message: "Groupings tab not found." };
+let sheet = ss.getSheetByName("Trainee Attendance") || ss.getSheetByName("Trainee Attendance ");
+if (!sheet) return { success: false, message: "Trainee Attendance tab not found." };
 
 const lastRow = sheet.getLastRow();
 const lastCol = sheet.getLastColumn();
-if (lastRow < 2) return { success: false, message: "Sheet is empty." };
+if (lastRow < 1) return { success: false, message: "Sheet is empty." };
 
-const headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 const targetHeader = `[Att] ${junctureName.trim()}`;
 const juncIdx = headers.indexOf(targetHeader);
 
@@ -1990,8 +1957,49 @@ tSheet.getRange(tInsertRow, tProjIdx + 1).setValue(projectVal);
 } catch (err) { console.log("Template update failed: " + err.toString()); }
 
 return { success: true, message: "New volunteer added successfully & Attendance updated!" };
+} else if (form.type === 'trainee') {
+let newRow = new Array(rawHeaders.length).fill("");
+newRow[0] = name;
+
+for (const [cleanKey, value] of Object.entries(form.data)) {
+const normKey = normalizeHeader(cleanKey);
+for(let i=0; i<rawHeaders.length; i++) {
+const normHeader = normalizeHeader(rawHeaders[i]);
+const isMatch = normHeader === normKey ||
+(normKey.includes("meetinglocation") && normHeader.includes("meetinglocation")) ||
+(normKey.includes("dismissallocation") && normHeader.includes("dismissallocation")) ||
+(normKey.includes("attending") && normHeader.includes("attending")) ||
+(normKey.includes("caregiver") && normHeader.includes("caregiver"));
+if (isMatch) {
+newRow[i] = value;
+if (normHeader.includes("attending")) attendingStatus = value.toString().toLowerCase();
+break;
 }
-return { success: false, message: "Record not found to update for: " + name };
+}
+}
+
+const colAVals = sheet.getRange("A:A").getValues();
+let insertRow = -1;
+for (let k = 1; k < colAVals.length; k++) {
+if (!colAVals[k][0]) {
+insertRow = k + 1;
+break;
+}
+}
+if (insertRow === -1) insertRow = sheet.getLastRow() + 1;
+sheet.getRange(insertRow, 1, 1, newRow.length).setValues([newRow]);
+
+// Inject checkboxes for dynamic columns
+const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+currentHeaders.forEach((h, i) => {
+ const str = String(h);
+ if (str.startsWith("[Att] ") || str === "[Sys] Gone Home") {
+     sheet.getRange(insertRow, i + 1).insertCheckboxes();
+ }
+});
+
+targetRow = insertRow;
+}
 } else {
 // Existing Row Logic - BATCHED UPDATE
 targetRow = cell.getRow();
@@ -2028,102 +2036,15 @@ break;
 if (hasChanges) {
 rowRange.setValues([rowData]);
 }
+}
 
 // --- LOGICAL CASCADE: Check Attendance Status ---
 if (form.type === 'trainee') {
-let tSheet = ss.getSheetByName("Trainee Attendance");
-if (!tSheet) tSheet = ss.getSheetByName("Trainee Attendance ");
-const gSheet = getGroupingSheet(ss);
-
 if (attendingStatus === 'n') {
-// 1. Clear their volunteer paired globally in Trainee Attendance
-if (tSheet) {
-const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
+const tHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
 if (tVolPairedIdx > -1) {
-tSheet.getRange(targetRow, tVolPairedIdx + 1).setValue("");
-}
-}
-// 2. Delete row from Groupings
-if (gSheet) {
-const bValues = gSheet.getRange("B:B").getValues();
-const nameClean = name.toLowerCase();
-for (let i = bValues.length - 1; i >= 2; i--) {
-if (bValues[i][0] && bValues[i][0].toString().trim().toLowerCase() === nameClean) {
-    gSheet.deleteRow(i + 1);
-}
-}
-}
-} else if (attendingStatus === 'y') {
-// Add row to Groupings if they don't exist
-if (gSheet) {
-const bValues = gSheet.getRange("B:B").getValues();
-const nameClean = name.toLowerCase();
-let found = false;
-
-for (let i = 2; i < bValues.length; i++) {
-if (bValues[i][0] && bValues[i][0].toString().trim().toLowerCase() === nameClean) {
-    found = true;
-    break;
-}
-}
-
-if (!found) {
-let insertRow = -1;
-for (let i = 2; i < bValues.length; i++) {
-    if (!bValues[i][0] || bValues[i][0].toString().trim() === "") {
-        insertRow = i + 1;
-        break;
-    }
-}
-if (insertRow === -1) {
-    insertRow = gSheet.getLastRow() + 1;
-}
-if (insertRow < 3) insertRow = 3;
-
-const tSheetName = tSheet ? tSheet.getName() : "Trainee Attendance";
-const mSheet = ss.getSheetByName("MISC PriVol");
-const mSheetName = mSheet ? mSheet.getName() : "MISC PriVol";
-
-// BATCH COLUMNS 1 TO 5
-const block1To5 = [[
-`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!L:L,"Not Found")`,
-name,
-`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!O:O,"Not Found")`,
-`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!C:C,"Not Found")`,
-`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!D:D,"Not Found")`
-]];
-gSheet.getRange(insertRow, 1, 1, 5).setValues(block1To5);
-
-// Look for Juncture checkboxes dynamically
-const gHeaders = gSheet.getRange(2, 1, 1, gSheet.getLastColumn()).getValues()[0];
-let checkboxColsCount = 0;
-let firstCheckboxCol = -1;
-for(let h=0; h<gHeaders.length; h++){
-    const str = String(gHeaders[h]);
-    if(str.startsWith("[Att] ") || str === "[Sys] Gone Home") {
-        if(firstCheckboxCol === -1) firstCheckboxCol = h + 1;
-        checkboxColsCount++;
-    }
-}
-
-if (checkboxColsCount > 0 && firstCheckboxCol > -1) {
-    gSheet.getRange(insertRow, firstCheckboxCol, 1, checkboxColsCount).insertCheckboxes();
-} else {
-    gSheet.getRange(insertRow, 6, 1, 7).insertCheckboxes(); // Fallback to original range if headers not clear
-}
-
-// BATCH COLUMNS 13 TO 18
-const block13To18 = [[
-`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!H:H,"Not Found")`,
-`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!G:G,"Not Found")`,
-`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!I:I,"Not Found")`,
-`=XLOOKUP(B${insertRow}, '${mSheetName}'!A:A,'${mSheetName}'!D:D,"Not Found")`,
-`=XLOOKUP(B${insertRow}, '${mSheetName}'!A:A,'${mSheetName}'!B:B,"Not Found")`,
-`=XLOOKUP(B${insertRow},'${tSheetName}'!A:A,'${tSheetName}'!J:J,"Not Found")`
-]];
-gSheet.getRange(insertRow, 13, 1, 6).setValues(block13To18);
-}
+sheet.getRange(targetRow, tVolPairedIdx + 1).setValue("");
 }
 }
 } else if (form.type === 'volunteer') {
@@ -2158,6 +2079,5 @@ if (tVolPairedIdx > -1) {
 }
 
 return { success: true, message: "Attendance updated successfully!" };
-}
 } catch(e) { return { success: false, message: e.toString() }; }
 }

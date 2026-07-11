@@ -36,9 +36,12 @@ const titleEl = document.getElementById('navContextTitle');
 const manualPairingActions = document.getElementById('navContextActionsManualPairing');
 const manualGroupingActions = document.getElementById('navContextActionsManualGrouping');
 const commAttActions = document.getElementById('navContextActionsCommAtt');
+const navActionsRow = document.getElementById('navActionsRow');
 
 if(navDefault) navDefault.classList.add('hidden');
 if(navContext) navContext.classList.remove('hidden');
+
+let hasActions = false;
 
 if (manualPairingActions) {
 manualPairingActions.classList.add('hidden');
@@ -54,50 +57,48 @@ commAttActions.classList.remove('flex');
 }
 
 if (viewId === 'comm') {
-if(titleEl) {
-titleEl.innerText = 'Comm Dashboard';
-titleEl.className = 'text-base md:text-lg font-extrabold text-blue-600 dark:text-blue-400 leading-tight break-words whitespace-normal';
-}
+if(titleEl) titleEl.innerText = 'Comm Dashboard';
 } else if (viewId === 'actual-attendance') {
-if(titleEl) {
-titleEl.innerText = 'Select Event for Tracker';
-titleEl.className = 'text-base md:text-lg font-extrabold text-teal-600 dark:text-teal-400 leading-tight break-words whitespace-normal';
-}
+if(titleEl) titleEl.innerText = 'Select Event for Tracker';
 } else if (viewId === 'comm-attendance') {
 // Title is updated dynamically in loadCommAttendanceData
-if(titleEl) titleEl.className = 'text-base md:text-lg font-extrabold text-teal-600 dark:text-teal-400 leading-tight break-words whitespace-normal';
 if (commAttActions) {
 commAttActions.classList.remove('hidden');
 commAttActions.classList.add('flex');
+hasActions = true;
 }
 } else if (viewId === 'manual-pairing') {
 // Title is updated dynamically in loadManualPairingData
-if(titleEl) titleEl.className = 'text-base md:text-lg font-extrabold text-blue-600 dark:text-blue-400 leading-tight break-words whitespace-normal';
 if (manualPairingActions) {
 manualPairingActions.classList.remove('hidden');
 manualPairingActions.classList.add('flex');
+hasActions = true;
 }
 } else if (viewId === 'manual-grouping') {
 // Title is updated dynamically in loadGroupingData
-if(titleEl) titleEl.className = 'text-base md:text-lg font-extrabold text-orange-600 dark:text-orange-400 leading-tight break-words whitespace-normal';
 if (manualGroupingActions) {
 manualGroupingActions.classList.remove('hidden');
 manualGroupingActions.classList.add('flex');
+hasActions = true;
 }
 } else if (viewId === 'volunteer') {
-if(titleEl) {
-titleEl.innerText = 'Attendance Update';
-titleEl.className = 'text-base md:text-lg font-extrabold text-green-600 dark:text-green-400 leading-tight break-words whitespace-normal';
-}
+if(titleEl) titleEl.innerText = 'Attendance Update';
 } else if (viewId === 'settings') {
-if(titleEl) {
-titleEl.innerText = 'Configuration & Security';
-titleEl.className = 'text-base md:text-lg font-extrabold text-purple-600 dark:text-purple-400 leading-tight break-words whitespace-normal';
-}
+if(titleEl) titleEl.innerText = 'Configuration & Security';
 } else {
 // Landing page shows default logo
 if(navDefault) navDefault.classList.remove('hidden');
 if(navContext) navContext.classList.add('hidden');
+}
+
+if (navActionsRow) {
+if (hasActions) {
+navActionsRow.classList.remove('hidden');
+navActionsRow.classList.add('flex');
+} else {
+navActionsRow.classList.add('hidden');
+navActionsRow.classList.remove('flex');
+}
 }
 
 if (viewId === 'comm' || viewId === 'volunteer' || viewId === 'actual-attendance') loadSheets(viewId); 
