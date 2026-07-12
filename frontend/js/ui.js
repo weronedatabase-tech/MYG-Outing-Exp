@@ -501,10 +501,10 @@ let detailsHtml = `<div class="space-y-3 mt-1 text-sm text-gray-700 dark:text-gr
 
 // Integrated Quick Edit Form
 detailsHtml += `
-<div class="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-100 dark:border-blue-900/30 space-y-3 shadow-inner">
- <div class="flex items-center gap-2 mb-1 border-b border-blue-200 dark:border-blue-800/50 pb-2">
-     <i class="fa-solid fa-pen-to-square text-blue-500"></i>
-     <h4 class="font-bold text-blue-800 dark:text-blue-300 text-xs uppercase tracking-wider">Quick Edit</h4>
+<div class="bg-gray-50/50 dark:bg-zinc-800/30 p-3 rounded-xl border border-gray-200 dark:border-zinc-700/60 space-y-3 shadow-inner">
+ <div class="flex items-center gap-2 mb-1 border-b border-gray-200 dark:border-zinc-700/60 pb-2">
+     <i class="fa-solid fa-pen-to-square text-gray-500"></i>
+     <h4 class="font-bold text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wider">Quick Edit</h4>
  </div>
 
  <input type="hidden" id="infoEditSheetUrl" value="${sheetUrl}">
@@ -513,31 +513,7 @@ detailsHtml += `
 
  <div class="grid grid-cols-1 gap-3">
      
-     <div class="flex items-center gap-3 relative">
-         ${adminLockHtml}
-         <div class="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-500 shrink-0"><i class="fa-solid fa-users"></i></div>
-         <div class="flex-1">
-             <label class="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5 uppercase tracking-wider">Group</label>
-             <input type="text" id="infoEditGroup" value="${groupVal}" class="w-full bg-white dark:bg-black border border-blue-200 dark:border-blue-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-blue-500 shadow-sm outline-none transition-colors" ${isAdminAuthenticated ? '' : 'readonly'} placeholder="Unassigned">
-         </div>
-     </div>`;
-     
-if (role === 'TRAINEE') {
- detailsHtml += `
-     <div class="flex items-start gap-3 relative mt-1">
-         ${adminLockHtml}
-         <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0"><i class="fa-solid fa-handshake-angle"></i></div>
-         <div class="flex-1 relative">
-             <label class="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5 uppercase tracking-wider">Paired Vol(s)</label>
-             <input type="hidden" id="infoEditPairingHidden" value="${pairedVal}">
-             <div id="infoEditPairingTags" class="flex flex-wrap gap-1 mb-1"></div>
-             <input type="text" id="infoEditPairingInput" class="w-full bg-white dark:bg-black border border-blue-200 dark:border-blue-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-blue-500 shadow-sm outline-none transition-colors" placeholder="Search vol..." oninput="window.filterInfoPairing()" onfocus="window.filterInfoPairing()" autocomplete="off" ${isAdminAuthenticated ? '' : 'readonly'}>
-             <ul id="infoEditPairingList" class="absolute z-50 w-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg mt-1 shadow-xl hidden max-h-40 overflow-y-auto pb-4 custom-scrollbar"></ul>
-         </div>
-     </div>`;
-}
-
-detailsHtml += `
+     <!-- 1. ATTENDING -->
      <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0"><i class="fa-solid fa-clipboard-user"></i></div>
           <div class="flex-1">
@@ -549,24 +525,56 @@ detailsHtml += `
               </select>
           </div>
      </div>
+
+     <!-- 2. MEETING -->
      <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0"><i class="fa-solid fa-location-dot"></i></div>
+          <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-500 shrink-0"><i class="fa-solid fa-location-dot"></i></div>
           <div class="flex-1">
-              <label class="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5 uppercase tracking-wider">Meeting</label>
-              <select id="infoEditMeeting" class="w-full bg-white dark:bg-black border border-blue-200 dark:border-blue-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-blue-500 shadow-sm outline-none transition-colors">
+              <label class="block text-[10px] font-bold text-green-700 dark:text-green-400 mb-0.5 uppercase tracking-wider">Meeting</label>
+              <select id="infoEditMeeting" class="w-full bg-white dark:bg-black border border-green-200 dark:border-green-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-green-500 shadow-sm outline-none transition-colors">
                   ${meetOptionsHtml}
               </select>
           </div>
      </div>
+
+     <!-- 3. DISMISSAL -->
      <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0"><i class="fa-solid fa-flag-checkered"></i></div>
+          <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-500 shrink-0"><i class="fa-solid fa-flag-checkered"></i></div>
           <div class="flex-1">
-              <label class="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5 uppercase tracking-wider">Dismissal</label>
-              <select id="infoEditDismissal" class="w-full bg-white dark:bg-black border border-blue-200 dark:border-blue-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-blue-500 shadow-sm outline-none transition-colors">
+              <label class="block text-[10px] font-bold text-purple-700 dark:text-purple-400 mb-0.5 uppercase tracking-wider">Dismissal</label>
+              <select id="infoEditDismissal" class="w-full bg-white dark:bg-black border border-purple-200 dark:border-purple-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-purple-500 shadow-sm outline-none transition-colors">
                   ${disOptionsHtml}
               </select>
           </div>
      </div>
+     
+     <!-- 4. GROUP -->
+     <div class="flex items-center gap-3 relative">
+         ${adminLockHtml}
+         <div class="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-500 shrink-0"><i class="fa-solid fa-users"></i></div>
+         <div class="flex-1">
+             <label class="block text-[10px] font-bold text-orange-700 dark:text-orange-400 mb-0.5 uppercase tracking-wider">Group</label>
+             <input type="text" id="infoEditGroup" value="${groupVal}" class="w-full bg-white dark:bg-black border border-orange-200 dark:border-orange-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-orange-500 shadow-sm outline-none transition-colors" ${isAdminAuthenticated ? '' : 'readonly'} placeholder="Unassigned">
+         </div>
+     </div>`;
+     
+if (role === 'TRAINEE') {
+ detailsHtml += `
+     <!-- 5. PAIRING -->
+     <div class="flex items-start gap-3 relative mt-1">
+         ${adminLockHtml}
+         <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0"><i class="fa-solid fa-handshake-angle"></i></div>
+         <div class="flex-1 relative">
+             <label class="block text-[10px] font-bold text-teal-700 dark:text-teal-400 mb-0.5 uppercase tracking-wider">Paired Vol(s)</label>
+             <input type="hidden" id="infoEditPairingHidden" value="${pairedVal}">
+             <div id="infoEditPairingTags" class="flex flex-wrap gap-1 mb-1"></div>
+             <input type="text" id="infoEditPairingInput" class="w-full bg-white dark:bg-black border border-teal-200 dark:border-teal-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-teal-500 shadow-sm outline-none transition-colors" placeholder="Search vol..." oninput="window.filterInfoPairing()" onfocus="window.filterInfoPairing()" autocomplete="off" ${isAdminAuthenticated ? '' : 'readonly'}>
+             <ul id="infoEditPairingList" class="absolute z-50 w-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg mt-1 shadow-xl hidden max-h-40 overflow-y-auto pb-4 custom-scrollbar"></ul>
+         </div>
+     </div>`;
+}
+
+detailsHtml += `
  </div>
 </div>
 `;
@@ -617,17 +625,7 @@ detailsHtml += `
     </div>
 </div>
 `;
-} else if (role === 'VOLUNTEER') {
-detailsHtml += `
-<div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-    <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0 mt-0.5"><i class="fa-solid fa-user-group"></i></div>
-    <div class="flex-1 min-w-0">
-        <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Paired Trainee(s)</div>
-        <div class="font-bold text-teal-700 dark:text-teal-400 break-words whitespace-pre-wrap">${pairedVal}</div>
-    </div>
-</div>
-`;
-}
+} 
 
 detailsHtml += `</div>`; // Close details container
 
@@ -635,7 +633,7 @@ let remarks = ex.remark || '-';
 let remarksHtml = "";
 if (remarks && remarks !== '-' && remarks.trim() !== '') {
 remarksHtml = `
-<div class="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 border-l-4 border-l-yellow-400 dark:border-l-yellow-500 p-3 rounded-r-lg shadow-sm">
+<div class="mt-2 mb-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 border-l-4 border-l-yellow-400 dark:border-l-yellow-500 p-3 rounded-r-lg shadow-sm">
  <div class="flex items-center gap-2 mb-1">
      <i class="fa-solid fa-triangle-exclamation text-yellow-600 dark:text-yellow-500 text-sm"></i>
      <span class="font-black text-yellow-800 dark:text-yellow-400 text-[10px] uppercase tracking-wider">Remarks</span>
@@ -650,7 +648,7 @@ if (role === 'TRAINEE' && ex.t_one_on_one) {
  const oneOnOneRaw = String(ex.t_one_on_one).trim().toLowerCase();
  if (oneOnOneRaw !== '' && !['no', 'n', 'false', '0'].includes(oneOnOneRaw)) {
      pairingConsiderationsHtml = `
-     <div class="mt-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-400 dark:border-l-blue-500 p-3 rounded-r-lg shadow-sm">
+     <div class="mt-2 mb-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-400 dark:border-l-blue-500 p-3 rounded-r-lg shadow-sm">
          <div class="flex items-center gap-2 mb-1">
              <i class="fa-solid fa-star text-blue-600 dark:text-blue-500 text-sm"></i>
              <span class="font-black text-blue-800 dark:text-blue-400 text-[10px] uppercase tracking-wider">Pairing Considerations</span>
@@ -718,7 +716,7 @@ if (!sheetUrl) return alert("Error: Context URL lost.");
 
 // Prominent Save Flow
 btn.disabled = true;
-btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...`;
+btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Saving to Database...`;
 
 const payloadData = {
  "Name": name,
