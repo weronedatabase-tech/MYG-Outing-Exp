@@ -931,7 +931,7 @@ if (changed) {
 let tOutput = tData.map((vals, i) => vals.map((v, c) => tFormulas[i][c] !== "" ? tFormulas[i][c] : v));
 tRange.setValues(tOutput);
 SpreadsheetApp.flush();
-atomicCacheRebuild(sheetUrl, ss); // Write-Through Cache
+patchCachesOnPairingSync(sheetUrl, updates);
 }
 
 return { success: true };
@@ -1057,7 +1057,7 @@ vRange.setValues(output);
 }
 
 SpreadsheetApp.flush();
-atomicCacheRebuild(sheetUrl, ss); // Write-Through Cache
+patchCachesOnGroupingSync(sheetUrl, updates);
 return { success: true };
 } catch(e) {
 return { success: false, message: e.toString() };
@@ -1490,7 +1490,7 @@ changedGlobal = true;
 
 if (changedGlobal) {
 SpreadsheetApp.flush();
-atomicCacheRebuild(sheetUrl, ss);
+patchCachesOnCommSync(sheetUrl, multipleUpdates);
 }
 return { success: true };
 } catch(e) {
@@ -1908,6 +1908,116 @@ const statsKey = getCacheKey("stats", sheetUrl);
 cache.remove(statsKey);
 cache.remove(statsKey + "_count");
 } catch(e) {}
+}
+
+function patchCachesOnCommSync(sheetUrl, multipleUpdates) {
+try {
+const commKey = getCacheKey("comm", sheetUrl);
+const commStr = getLargeCache(commKey);
+let commData = commStr ? JSON.parse(commStr) : null;
+
+const pairKey = getCacheKey("pair", sheetUrl);
+const pairStr = getLargeCache(pairKey);
+let pairData = pairStr ? JSON.parse(pairStr) : null;
+let pairChanged = false;
+
+if (commData && commData.success && commData.attendance) {
+for (const [juncName, updates] of Object.entries(multipleUpdates)) {
+   const isGoneHome = juncName === '__GONE_HOME__';
+   const isBus = juncName.startsWith('__BUS__');
+   
+   updates.forEach(u => {
+       const nMatch = String(u.name).toLowerCase();
+       if (isBus) {
+           const bName = juncName.substring(7);
+           if (!commData.busAttendance[bName]) commData.busAttendance[bName] = {};
+           commData.busAttendance[bName][u.name] = u.status;
+       } else {
+           if (!commData.attendance[juncName]) commData.attendance[juncName] = {};
+           commData.attendance[juncName][u.name] = u.status;
+       }
+       
+       if (isGoneHome && pairData && pairData.success && pairData.data) {
+           const trainee = pairData.data.trainees.find(t => t.name.toLowerCase() === nMatch);
+           if (trainee) {
+               trainee.isGoneHome = u.status;
+               pairChanged = true;
+           }
+       }
+   });
+}
+putLargeCache(commKey, JSON.stringify(commData));
+}
+
+if (pairChanged) {
+putLargeCache(pairKey, JSON.stringify(pairData));
+}
+} catch(e) { console.log(e); }
+}
+
+function patchCachesOnPairingSync(sheetUrl, updates) {
+try {
+const pairKey = getCacheKey("pair", sheetUrl);
+const pairStr = getLargeCache(pairKey);
+const pairData = pairStr ? JSON.parse(pairStr) : null;
+
+const commKey = getCacheKey("comm", sheetUrl);
+const commStr = getLargeCache(commKey);
+const commData = commStr ? JSON.parse(commStr) : null;
+
+updates.forEach(u => {
+const normName = String(u.traineeName).toLowerCase();
+if (pairData && pairData.success && pairData.data) {
+   const t = pairData.data.trainees.find(x => x.name.toLowerCase() === normName);
+   if (t) t.volPaired = u.volPaired;
+}
+if (commData && commData.success && commData.participants) {
+   const p = commData.participants.find(x => x.name.toLowerCase() === normName);
+   if (p) p.volPaired = u.volPaired;
+}
+});
+
+if (pairData) putLargeCache(pairKey, JSON.stringify(pairData));
+if (commData) putLargeCache(commKey, JSON.stringify(commData));
+} catch(e) { console.log(e); }
+}
+
+function patchCachesOnGroupingSync(sheetUrl, updates) {
+try {
+const pairKey = getCacheKey("pair", sheetUrl);
+const pairStr = getLargeCache(pairKey);
+const pairData = pairStr ? JSON.parse(pairStr) : null;
+
+const commKey = getCacheKey("comm", sheetUrl);
+const commStr = getLargeCache(commKey);
+const commData = commStr ? JSON.parse(commStr) : null;
+
+updates.forEach(u => {
+const normName = String(u.name || u.traineeName).toLowerCase();
+if (u.role === 'TRAINEE' || u.traineeName) {
+   if (pairData && pairData.success && pairData.data) {
+       const t = pairData.data.trainees.find(x => x.name.toLowerCase() === normName);
+       if (t) t.group = u.group;
+   }
+   if (commData && commData.success && commData.participants) {
+       const p = commData.participants.find(x => x.name.toLowerCase() === normName);
+       if (p) p.group = u.group;
+   }
+} else if (u.role === 'VOLUNTEER') {
+   if (pairData && pairData.success && pairData.data) {
+       const v = pairData.data.volunteers.find(x => x.name.toLowerCase() === normName);
+       if (v) {
+           if (u.groupIC !== undefined) v.groupIC = u.groupIC;
+           if (u.meetIC !== undefined) v.meetIC = u.meetIC;
+           if (u.dismissIC !== undefined) v.dismissIC = u.dismissIC;
+       }
+   }
+}
+});
+
+if (pairData) putLargeCache(pairKey, JSON.stringify(pairData));
+if (commData) putLargeCache(commKey, JSON.stringify(commData));
+} catch(e) { console.log(e); }
 }
 
 function submitAttendanceData(form) {
