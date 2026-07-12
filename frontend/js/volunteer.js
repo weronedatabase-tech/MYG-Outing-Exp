@@ -18,7 +18,17 @@ function loadVolunteerEvents() {
                opt.text = item.displayName;
                selector.appendChild(opt);
            });
-           selector.selectedIndex = 0;
+           
+           const params = new URLSearchParams(window.location.search);
+           const urlParam = params.get('url');
+           
+           if (urlParam && data.find(x => x.sheetUrl === urlParam)) {
+               selector.value = urlParam;
+           } else if (data.length > 0) {
+               const closest = window.getClosestEventUrl ? window.getClosestEventUrl(data) : data[0].sheetUrl;
+               if (closest) selector.value = closest;
+               else selector.selectedIndex = 0;
+           }
        }
        if (typeof resetVolForm === 'function') resetVolForm();
    };

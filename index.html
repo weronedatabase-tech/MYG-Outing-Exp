@@ -65,24 +65,121 @@ theme: { extend: { colors: { primary: '#3b82f6' } } }
 <h2 class="text-2xl md:text-3xl font-bold text-center text-gray-900 dark:text-white mb-6 md:mb-10 mt-4 md:mt-8">Select Profile</h2>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-4xl mx-auto">
 <div onclick="requestAccess('admin.html')" class="bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800/80 border border-gray-200 dark:border-zinc-800 hover:border-blue-500/50 rounded-2xl p-6 cursor-pointer transition-all shadow-lg flex items-center gap-4 group">
-<div class="bg-blue-100 dark:bg-blue-900/50 p-4 rounded-xl text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform"><i class="fa-solid fa-user-tie text-2xl"></i></div>
-<div><h3 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Comm Profile</h3><p class="text-sm text-gray-500 dark:text-gray-400">Create outings & manage events <i class="fa-solid fa-lock text-xs ml-1 opacity-50"></i></p></div>
+<div class="bg-blue-100 dark:bg-blue-900/50 p-4 rounded-xl text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform shrink-0"><i class="fa-solid fa-user-tie text-2xl"></i></div>
+<div class="flex-1 min-w-0"><h3 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Comm Profile</h3><p class="text-sm text-gray-500 dark:text-gray-400">Create outings & manage events <i class="fa-solid fa-lock text-xs ml-1 opacity-50"></i></p></div>
 </div>
-<div onclick="navigateTo('volunteer.html')" class="bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800/80 border border-gray-200 dark:border-zinc-800 hover:border-green-500/50 rounded-2xl p-6 cursor-pointer transition-all shadow-lg flex items-center gap-4 group">
-<div class="bg-green-100 dark:bg-green-900/50 p-4 rounded-xl text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform"><i class="fa-solid fa-users text-2xl"></i></div>
-<div><h3 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Volunteer & Trainee</h3><p class="text-sm text-gray-500 dark:text-gray-400">Update attendance</p></div>
+
+<div onclick="navigateFromHome('volunteer')" class="bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800/80 border border-gray-200 dark:border-zinc-800 hover:border-green-500/50 rounded-2xl p-6 cursor-pointer transition-all shadow-lg flex flex-col gap-4 group relative">
+<div class="flex items-center gap-4 w-full">
+<div class="bg-green-100 dark:bg-green-900/50 p-4 rounded-xl text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform shrink-0"><i class="fa-solid fa-users text-2xl"></i></div>
+<div class="flex-1 min-w-0">
+  <h3 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Volunteer & Trainee</h3>
+  <p class="text-sm text-gray-500 dark:text-gray-400">Update attendance</p>
 </div>
-<div onclick="navigateTo('tracker.html')" class="bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800/80 border border-gray-200 dark:border-zinc-800 hover:border-teal-500/50 rounded-2xl p-6 cursor-pointer transition-all shadow-lg flex items-center gap-4 group">
-<div class="bg-teal-100 dark:bg-teal-900/50 p-4 rounded-xl text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform"><i class="fa-solid fa-clipboard-check text-2xl"></i></div>
-<div><h3 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Actual Day Tracker</h3><p class="text-sm text-gray-500 dark:text-gray-400">Live mark presence at events</p></div>
 </div>
+<div class="w-full mt-1 border-t border-gray-100 dark:border-zinc-800 pt-3" onclick="event.stopPropagation()">
+<label class="block text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Target Event</label>
+<div class="relative">
+  <select id="volunteerEventSelect" class="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-zinc-700 rounded-lg py-2 px-3 text-xs text-gray-900 dark:text-white focus:border-green-500 outline-none appearance-none shadow-sm cursor-pointer hover:border-green-400 transition-colors">
+      <option disabled selected>Loading events...</option>
+  </select>
+  <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500"><i class="fa-solid fa-chevron-down text-[10px]"></i></div>
+</div>
+</div>
+</div>
+
+<div onclick="navigateFromHome('tracker')" class="bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800/80 border border-gray-200 dark:border-zinc-800 hover:border-teal-500/50 rounded-2xl p-6 cursor-pointer transition-all shadow-lg flex flex-col gap-4 group relative">
+<div class="flex items-center gap-4 w-full">
+<div class="bg-teal-100 dark:bg-teal-900/50 p-4 rounded-xl text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform shrink-0"><i class="fa-solid fa-clipboard-check text-2xl"></i></div>
+<div class="flex-1 min-w-0">
+  <h3 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Actual Day Tracker</h3>
+  <p class="text-sm text-gray-500 dark:text-gray-400">Live mark presence</p>
+</div>
+</div>
+<div class="w-full mt-1 border-t border-gray-100 dark:border-zinc-800 pt-3" onclick="event.stopPropagation()">
+<label class="block text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Target Event</label>
+<div class="relative">
+  <select id="trackerEventSelect" class="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-zinc-700 rounded-lg py-2 px-3 text-xs text-gray-900 dark:text-white focus:border-teal-500 outline-none appearance-none shadow-sm cursor-pointer hover:border-teal-400 transition-colors">
+      <option disabled selected>Loading events...</option>
+  </select>
+  <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500"><i class="fa-solid fa-chevron-down text-[10px]"></i></div>
+</div>
+</div>
+</div>
+
 <div onclick="requestAccess('settings.html')" class="bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800/80 border border-gray-200 dark:border-zinc-800 hover:border-purple-500/50 rounded-2xl p-6 cursor-pointer transition-all shadow-lg flex items-center gap-4 group">
-<div class="bg-purple-100 dark:bg-purple-900/50 p-4 rounded-xl text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform"><i class="fa-solid fa-sliders text-2xl"></i></div>
-<div><h3 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Settings</h3><p class="text-sm text-gray-500 dark:text-gray-400">Configure attendance fields <i class="fa-solid fa-lock text-xs ml-1 opacity-50"></i></p></div>
+<div class="bg-purple-100 dark:bg-purple-900/50 p-4 rounded-xl text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform shrink-0"><i class="fa-solid fa-sliders text-2xl"></i></div>
+<div class="flex-1 min-w-0"><h3 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Settings</h3><p class="text-sm text-gray-500 dark:text-gray-400">Configure attendance fields <i class="fa-solid fa-lock text-xs ml-1 opacity-50"></i></p></div>
 </div>
 </div>
 </div>
 </main>
+
+<script>
+function populateHomeSelectors(data) {
+const volSelect = document.getElementById('volunteerEventSelect');
+const trackerSelect = document.getElementById('trackerEventSelect');
+if(!volSelect || !trackerSelect) return;
+
+if(!data || data.length === 0) {
+  const emptyOption = '<option disabled selected>No upcoming events</option>';
+  volSelect.innerHTML = emptyOption;
+  trackerSelect.innerHTML = emptyOption;
+  volSelect.disabled = true;
+  trackerSelect.disabled = true;
+  return;
+}
+
+let optionsHtml = '';
+data.forEach(item => {
+  optionsHtml += `<option value="${item.sheetUrl}">${item.displayName}</option>`;
+});
+
+volSelect.innerHTML = optionsHtml;
+trackerSelect.innerHTML = optionsHtml;
+volSelect.disabled = false;
+trackerSelect.disabled = false;
+
+const closestUrl = window.getClosestEventUrl(data);
+if(closestUrl) {
+  volSelect.value = closestUrl;
+  trackerSelect.value = closestUrl;
+}
+}
+
+function loadHomeEvents() {
+const localDataStr = localStorage.getItem('myg_sheetList');
+if(localDataStr) {
+  try {
+      const parsed = JSON.parse(localDataStr);
+      populateHomeSelectors(parsed);
+  } catch(e) {}
+}
+
+apiCall('getRecentOutingSheets', null).then(res => {
+  if(res.success) {
+      localStorage.setItem('myg_sheetList', JSON.stringify(res.data));
+      populateHomeSelectors(res.data);
+  }
+});
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+loadHomeEvents();
+});
+
+function navigateFromHome(type) {
+let selectId = type === 'tracker' ? 'trackerEventSelect' : 'volunteerEventSelect';
+let selectEl = document.getElementById(selectId);
+let url = selectEl ? selectEl.value : null;
+
+if(!url || url.includes('Loading') || url.includes('No upcoming') || url.includes('Error')) {
+  navigateTo(type + '.html');
+} else {
+  navigateTo(type + '.html', { url: url });
+}
+}
+</script>
 
 <!-- AUTH MODAL -->
 <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
