@@ -16,6 +16,7 @@ let filteredManualPairingSourceView = null;
 function openManualPairing(url) {
 if(!url) return;
 
+currentActiveView = 'manual-pairing';
 isFilteredManualPairingMode = false;
 currentManualPairingSheetUrl = url;
 
@@ -30,6 +31,7 @@ requestAccess(null, () => openFilteredManualPairing(url, source));
 return;
 }
 
+currentActiveView = 'manual-pairing';
 filteredManualPairingSourceView = source;
 isFilteredManualPairingMode = true;
 currentManualPairingSheetUrl = url;
@@ -69,29 +71,29 @@ const sourceCard = document.querySelector(`.dnd-dropzone[data-name="${sourceName
 const targetCard = document.querySelector(`.dnd-dropzone[data-name="${targetName.replace(/'/g, "\\'")}"]`);
 
 [sourceCard, targetCard].forEach(card => {
-  if (card) {
-      const container = card.parentElement;
-      if (container) {
-          const containerRect = container.getBoundingClientRect();
-          const cardRect = card.getBoundingClientRect();
-          
-          if (cardRect.height > 0) {
-              const scrollTop = container.scrollTop + (cardRect.top - containerRect.top) - (containerRect.height / 2) + (cardRect.height / 2);
-              
-              container.scrollTo({
-                  top: scrollTop,
-                  behavior: 'smooth'
-              });
-          }
-      }
-      
-      const pulseClass = isPaired ? 'pulse-green' : 'pulse-red';
-      
-      card.classList.add(pulseClass);
-      setTimeout(() => {
-          card.classList.remove(pulseClass);
-      }, 800);
-  }
+ if (card) {
+     const container = card.parentElement;
+     if (container) {
+         const containerRect = container.getBoundingClientRect();
+         const cardRect = card.getBoundingClientRect();
+         
+         if (cardRect.height > 0) {
+             const scrollTop = container.scrollTop + (cardRect.top - containerRect.top) - (containerRect.height / 2) + (cardRect.height / 2);
+             
+             container.scrollTo({
+                 top: scrollTop,
+                 behavior: 'smooth'
+             });
+         }
+     }
+     
+     const pulseClass = isPaired ? 'pulse-green' : 'pulse-red';
+     
+     card.classList.add(pulseClass);
+     setTimeout(() => {
+         card.classList.remove(pulseClass);
+     }, 800);
+ }
 });
 });
 }, 150);
@@ -218,10 +220,10 @@ if (!item) return;
 let pairedNames = [];
 if (role === 'VOLUNTEER') {
 (manualPairingData.trainees || []).forEach(t => {
-   if (t.volPaired) {
-       const vols = t.volPaired.split(/[,|\n]+/).map(v => v.trim().toLowerCase()).filter(v => v);
-       if (vols.includes(name.toLowerCase())) pairedNames.push(t.name);
-   }
+  if (t.volPaired) {
+      const vols = t.volPaired.split(/[,|\n]+/).map(v => v.trim().toLowerCase()).filter(v => v);
+      if (vols.includes(name.toLowerCase())) pairedNames.push(t.name);
+  }
 });
 } else {
 pairedNames = item.volPaired ? item.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
@@ -240,8 +242,8 @@ const newCardNode = temp.firstElementChild;
 existingCard.replaceWith(newCardNode);
 
 uiBindLongPress(newCardNode, () => {
-   const p = (manualPairingData[role === 'VOLUNTEER' ? 'volunteers' : 'trainees'] || []).find(x => x.name === item.name);
-   if (p) showPersonInfo(p);
+  const p = (manualPairingData[role === 'VOLUNTEER' ? 'volunteers' : 'trainees'] || []).find(x => x.name === item.name);
+  if (p) showPersonInfo(p);
 });
 }
 }
@@ -365,7 +367,7 @@ const vols = otherT.volPaired.split(/[,|\n]+/).map(v => v.trim().toLowerCase()).
 if (vols.includes(cleanVolName)) {
 const otherTGroup = String(otherT.group || "").trim();
 if (tGroup !== "" && otherTGroup !== "" && tGroup !== otherTGroup) {
- blockingTraineeName = otherT.name;
+blockingTraineeName = otherT.name;
 }
 }
 });
@@ -513,8 +515,8 @@ const newDataStr = JSON.stringify(res.data);
 const oldDataStr = JSON.stringify(manualPairingData);
 
 if (newDataStr !== oldDataStr) {
-   manualPairingData = res.data;
-   renderManualPairings();
+  manualPairingData = res.data;
+  renderManualPairings();
 }
 }
 } catch(e) { }

@@ -37,19 +37,19 @@ theme: { extend: { colors: { primary: '#3b82f6' } } }
 <div class="flex items-center justify-between w-full min-h-[32px] gap-2">
 <div class="flex items-center gap-1.5 min-w-0 flex-1">
 <button onclick="handleNavBack()" class="bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 w-8 h-8 flex items-center justify-center rounded shadow-sm shrink-0 transition-colors">
-   <i class="fa-solid fa-arrow-left text-sm md:text-base"></i>
+  <i class="fa-solid fa-arrow-left text-sm md:text-base"></i>
 </button>
 <h1 class="text-base md:text-lg font-extrabold text-gray-900 dark:text-white leading-tight truncate">Configuration & Security</h1>
 </div>
 <div class="flex items-center gap-1.5 shrink-0 pl-2 ml-auto border-l border-gray-200 dark:border-zinc-700">
 <button onclick="refreshApp()" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-[10px] md:text-xs transition-colors group flex items-center p-1">
-   <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-sm md:text-base group-hover:text-primary transition-transform"></i>
+  <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-sm md:text-base group-hover:text-primary transition-transform"></i>
 </button>
 <button onclick="toggleTheme()" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-[10px] md:text-xs transition-colors flex items-center p-1">
-   <span class="text-sm md:text-base leading-none">🌗</span>
+  <span class="text-sm md:text-base leading-none">🌗</span>
 </button>
-<button onclick="navigateTo('index.html')" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-[10px] md:text-xs transition-colors flex items-center p-1">
-   <i class="fa-solid fa-house text-sm md:text-base"></i>
+<button onclick="navigateTo('./')" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-[10px] md:text-xs transition-colors flex items-center p-1">
+  <i class="fa-solid fa-house text-sm md:text-base"></i>
 </button>
 </div>
 </div>
@@ -73,25 +73,25 @@ theme: { extend: { colors: { primary: '#3b82f6' } } }
 <div class="mt-8 border-t border-gray-200 dark:border-zinc-800 pt-6">
 <h3 class="text-base font-bold text-gray-900 dark:text-white mb-4">Security</h3>
 <div class="space-y-4 max-w-sm">
-    <div>
-        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Current Admin Password</label>
-        <div class="relative">
-            <input type="password" id="settingsCurrentPwd" class="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-zinc-700 rounded-lg p-2.5 pr-10 text-sm text-gray-900 dark:text-white focus:border-purple-500 outline-none shadow-sm">
-            <button type="button" onclick="togglePasswordVisibility('settingsCurrentPwd')" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <i id="settingsCurrentPwdIcon" class="fa-regular fa-eye"></i>
-            </button>
-        </div>
-    </div>
-    <div>
-        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">New Admin Password</label>
-        <div class="relative">
-            <input type="password" id="settingsNewPwd" class="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-zinc-700 rounded-lg p-2.5 pr-10 text-sm text-gray-900 dark:text-white focus:border-purple-500 outline-none shadow-sm">
-            <button type="button" onclick="togglePasswordVisibility('settingsNewPwd')" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <i id="settingsNewPwdIcon" class="fa-regular fa-eye"></i>
-            </button>
-        </div>
-    </div>
-    <button id="changePwdBtn" onclick="changeAdminPassword()" class="w-full bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-900 dark:text-white font-bold py-2.5 rounded-lg border border-gray-300 dark:border-zinc-700 transition-colors shadow-sm text-sm">Change Password</button>
+   <div>
+       <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Current Admin Password</label>
+       <div class="relative">
+           <input type="password" id="settingsCurrentPwd" class="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-zinc-700 rounded-lg p-2.5 pr-10 text-sm text-gray-900 dark:text-white focus:border-purple-500 outline-none shadow-sm">
+           <button type="button" onclick="togglePasswordVisibility('settingsCurrentPwd')" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+               <i id="settingsCurrentPwdIcon" class="fa-regular fa-eye"></i>
+           </button>
+       </div>
+   </div>
+   <div>
+       <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">New Admin Password</label>
+       <div class="relative">
+           <input type="password" id="settingsNewPwd" class="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-zinc-700 rounded-lg p-2.5 pr-10 text-sm text-gray-900 dark:text-white focus:border-purple-500 outline-none shadow-sm">
+           <button type="button" onclick="togglePasswordVisibility('settingsNewPwd')" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+               <i id="settingsNewPwdIcon" class="fa-regular fa-eye"></i>
+           </button>
+       </div>
+   </div>
+   <button id="changePwdBtn" onclick="changeAdminPassword()" class="w-full bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-900 dark:text-white font-bold py-2.5 rounded-lg border border-gray-300 dark:border-zinc-700 transition-colors shadow-sm text-sm">Change Password</button>
 </div>
 </div>
 
@@ -104,10 +104,10 @@ theme: { extend: { colors: { primary: '#3b82f6' } } }
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-   requestAccess(null, () => loadSettings());
+  requestAccess(null, () => loadSettings());
 });
 window.handleNavBack = function() {
-   navigateTo('index.html');
+  navigateTo('./');
 };
 </script>
 
