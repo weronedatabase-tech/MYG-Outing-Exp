@@ -533,7 +533,7 @@ meetingTimes: Array.from(document.getElementsByName('editMeetingTime')).map(i=>i
 meetingBuses: Array.from(document.getElementsByName('editMeetingBus')).map(i=>i.checked), 
 dismissalLocs: Array.from(document.getElementsByName('editDismissalLoc')).map(i=>i.value), 
 dismissalTimes: Array.from(document.getElementsByName('dismissalTime')).map(i=>i.value), 
-dismissalBuses: Array.from(document.getElementsByName('dismissalBus')).map(i=>i.checked), 
+dismissalBuses: Array.from(document.getElementsByName('editDismissalBus')).map(i=>i.checked), 
 }; 
 
 apiCall('updateOuting', { sheetUrl: currentEditSheetUrl, form: formData }).then(res => { 
@@ -2018,20 +2018,14 @@ const juncKey = '__BUS__' + juncture;
 if (!pendingCommAttUpdates[juncKey]) pendingCommAttUpdates[juncKey] = {};
 pendingCommAttUpdates[juncKey][name] = busValue;
 
-handleBusSearch();
+const searchInput = document.getElementById('busSearchInput');
+if (searchInput) searchInput.value = '';
+const searchResults = document.getElementById('busSearchResults');
+if (searchResults) searchResults.classList.add('hidden');
+if (typeof toggleClearBtn === 'function') toggleClearBtn('busSearchInput');
+
 updateBusCardDOM(name);
 triggerSync();
-
-const btn = e.target;
-const orig = btn.innerText;
-btn.innerText = 'Saved';
-btn.classList.add('bg-green-500', 'text-white', 'border-green-600');
-setTimeout(() => {
-if(btn) {
-btn.innerText = orig;
-btn.classList.remove('bg-green-500', 'text-white', 'border-green-600');
-}
-}, 500);
 }
 
 function generateBusColumnText(columnType) {
