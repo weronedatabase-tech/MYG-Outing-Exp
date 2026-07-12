@@ -142,7 +142,11 @@ function updateUnpairedNotification(count) {
    // Update Comm Dashboard List
    if(currentSheetList) {
        currentSheetList.forEach((item, index) => {
-           if (item.sheetUrl === window.currentCommAttSheetUrl || item.sheetUrl === window.currentManualPairingSheetUrl || (typeof window.currentGroupingSheetUrl !== 'undefined' && item.sheetUrl === window.currentGroupingSheetUrl)) {
+           if (
+               (typeof currentCommAttSheetUrl !== 'undefined' && item.sheetUrl === currentCommAttSheetUrl) || 
+               (typeof currentManualPairingSheetUrl !== 'undefined' && item.sheetUrl === currentManualPairingSheetUrl) || 
+               (typeof currentGroupingSheetUrl !== 'undefined' && item.sheetUrl === currentGroupingSheetUrl)
+           ) {
                const pendingDiv = document.getElementById(`pending-badge-${index}`);
                if (pendingDiv) {
                    if (count > 0) {
@@ -265,6 +269,75 @@ function uiBindLongPress(element, callback) {
    });
 }
 
+// --- GLOBAL GROUP SELECTOR MODAL ---
+window.openGlobalGroupSelect = function(inputId) {
+   if (!isAdminAuthenticated) return requestAccess(null, () => window.openGlobalGroupSelect(inputId));
+   
+   let modal = document.getElementById('globalGroupSelectModal');
+   if (!modal) {
+       modal = document.createElement('div');
+       modal.id = 'globalGroupSelectModal';
+       modal.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-[120] flex items-center justify-center p-4 transition-opacity duration-300 opacity-0';
+       modal.innerHTML = `
+           <div class="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-2xl border border-gray-200 dark:border-zinc-800 flex flex-col max-h-[90vh] shadow-2xl scale-95 transition-transform duration-300" id="globalGroupSelectPanel">
+               <div class="p-4 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center shrink-0">
+                   <h3 class="text-gray-900 dark:text-white font-bold text-sm md:text-base">Assign Group</h3>
+                   <button onclick="closeGlobalGroupSelect()" class="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+               </div>
+               <div class="p-4 flex-grow overflow-y-auto custom-scrollbar max-h-[60vh] pb-12">
+                   <div id="globalGroupGrid" class="grid grid-cols-3 gap-2"></div>
+                   <div class="mt-4 border-t border-gray-200 dark:border-zinc-800 pt-4 flex gap-2">
+                       <button onclick="selectGlobalGroup('')" class="flex-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 py-2 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition">Unassign</button>
+                       <button onclick="selectGlobalNewGroup()" class="flex-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 py-2 rounded-lg text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">+ New Group</button>
+                   </div>
+               </div>
+           </div>
+       `;
+       document.body.appendChild(modal);
+   }
+
+   window.globalGroupTargetInput = inputId;
+   
+   const grid = document.getElementById('globalGroupGrid');
+   grid.innerHTML = '';
+   if (window.extractedActiveGroups) {
+       window.extractedActiveGroups.forEach(g => {
+           grid.innerHTML += `<button onclick="selectGlobalGroup('${g}')" class="bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-zinc-700 py-2 md:py-3 rounded-lg text-sm font-bold hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors shadow-sm focus:outline-none">Grp ${g}</button>`;
+       });
+   }
+
+   modal.classList.remove('hidden');
+   setTimeout(() => {
+       modal.classList.remove('opacity-0');
+       document.getElementById('globalGroupSelectPanel').classList.replace('scale-95', 'scale-100');
+   }, 10);
+};
+
+window.closeGlobalGroupSelect = function() {
+   const modal = document.getElementById('globalGroupSelectModal');
+   if (modal) {
+       modal.classList.add('opacity-0');
+       document.getElementById('globalGroupSelectPanel').classList.replace('scale-100', 'scale-95');
+       setTimeout(() => modal.classList.add('hidden'), 300);
+   }
+};
+
+window.selectGlobalGroup = function(g) {
+   const input = document.getElementById(window.globalGroupTargetInput);
+   if (input) {
+       input.value = g;
+   }
+   window.closeGlobalGroupSelect();
+};
+
+window.selectGlobalNewGroup = function() {
+   const g = prompt("Enter new Group Name or Number:");
+   if (g && g.trim()) {
+       selectGlobalGroup(g.trim());
+   }
+};
+
+
 // --- PERSON INFO & INTEGRATED QUICK EDIT ---
 
 window.lastPersonObj = null;
@@ -293,16 +366,30 @@ function showPersonInfo(personObj) {
        infoTitle.innerHTML = `<i class="fa-solid fa-circle-info mr-2 text-blue-500 dark:text-blue-400 shrink-0"></i> <span class="truncate flex-1">${nameStr}</span> <div class="shrink-0 ml-2">${roleBadge}</div>`;
    }
 
-   // Resilient context acquisition bypassing URL constraints
-   let meetingOpts = (window.commAttData?.meetingLocs?.length ? window.commAttData.meetingLocs : null) 
-                  || (window.manualPairingData?.meetingLocs?.length ? window.manualPairingData.meetingLocs : null) 
-                  || (window.groupingData?.meetingLocs?.length ? window.groupingData.meetingLocs : null) 
-                  || [];
-   let dismissalOpts = (window.commAttData?.dismissalLocs?.length ? window.commAttData.dismissalLocs : null) 
-                    || (window.manualPairingData?.dismissalLocs?.length ? window.manualPairingData.dismissalLocs : null) 
-                    || (window.groupingData?.dismissalLocs?.length ? window.groupingData.dismissalLocs : null) 
-                    || [];
-   let sheetUrl = window.currentCommAttSheetUrl || window.currentManualPairingSheetUrl || window.currentGroupingSheetUrl;
+   // Resilient context extraction bypassing URL constraints
+   let sheetUrl = "";
+   let meetingOpts = [];
+   let dismissalOpts = [];
+   let allGroups = new Set(["1", "2", "3", "4", "5"]);
+
+   const extractData = (dataObj) => {
+       if (dataObj?.meetingLocs) meetingOpts = dataObj.meetingLocs;
+       if (dataObj?.dismissalLocs) dismissalOpts = dataObj.dismissalLocs;
+       if (dataObj?.participants || dataObj?.trainees) {
+           const arr = dataObj.participants || dataObj.trainees;
+           arr.forEach(p => { if (p.group) allGroups.add(String(p.group).trim()); });
+       }
+   };
+
+   if (typeof commAttData !== 'undefined' && commAttData) extractData(commAttData);
+   if (typeof manualPairingData !== 'undefined' && manualPairingData) extractData(manualPairingData);
+   if (typeof groupingData !== 'undefined' && groupingData) extractData(groupingData);
+
+   if (typeof currentCommAttSheetUrl !== 'undefined' && currentCommAttSheetUrl) sheetUrl = currentCommAttSheetUrl;
+   if (typeof currentManualPairingSheetUrl !== 'undefined' && currentManualPairingSheetUrl) sheetUrl = currentManualPairingSheetUrl;
+   if (typeof currentGroupingSheetUrl !== 'undefined' && currentGroupingSheetUrl) sheetUrl = currentGroupingSheetUrl;
+
+   window.extractedActiveGroups = Array.from(allGroups).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
 
    let attVal = (personObj.attending || '').toLowerCase();
    if (!attVal) attVal = 'y';
@@ -381,12 +468,12 @@ function showPersonInfo(personObj) {
             </div>
        </div>
        
-       <div class="flex items-center gap-3 relative">
+       <div class="flex items-center gap-3 relative cursor-pointer group" onclick="openGlobalGroupSelect('infoEditGroup')">
            ${adminLockHtml}
-           <div class="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-500 shrink-0"><i class="fa-solid fa-users"></i></div>
-           <div class="flex-1">
+           <div class="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-500 shrink-0 group-hover:scale-110 transition-transform"><i class="fa-solid fa-users"></i></div>
+           <div class="flex-1 pointer-events-none">
                <label class="block text-[10px] font-bold text-orange-700 dark:text-orange-400 mb-0.5 uppercase tracking-wider">Group</label>
-               <input type="text" id="infoEditGroup" value="${groupVal.replace(/"/g, '&quot;')}" class="w-full bg-white dark:bg-black border border-orange-200 dark:border-orange-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-orange-500 shadow-sm outline-none transition-colors" ${isAdminAuthenticated ? '' : 'readonly'} placeholder="Unassigned">
+               <input type="text" id="infoEditGroup" value="${groupVal.replace(/"/g, '&quot;')}" class="w-full bg-gray-50 dark:bg-black border border-orange-200 dark:border-orange-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs shadow-sm outline-none transition-colors cursor-pointer" readonly placeholder="Unassigned">
            </div>
        </div>`;
        
@@ -399,7 +486,7 @@ function showPersonInfo(personObj) {
                <label class="block text-[10px] font-bold text-teal-700 dark:text-teal-400 mb-0.5 uppercase tracking-wider">Paired Vol(s)</label>
                <input type="hidden" id="infoEditPairingHidden" value="${pairedVal.replace(/"/g, '&quot;')}">
                <div id="infoEditPairingTags" class="flex flex-wrap gap-1 mb-1"></div>
-               <input type="text" id="infoEditPairingInput" class="w-full bg-white dark:bg-black border border-teal-200 dark:border-teal-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-teal-500 shadow-sm outline-none transition-colors" placeholder="Search vol..." oninput="window.filterInfoPairing()" onfocus="window.filterInfoPairing()" autocomplete="off" ${isAdminAuthenticated ? '' : 'readonly'}>
+               <input type="text" id="infoEditPairingInput" class="w-full bg-white dark:bg-black border border-teal-200 dark:border-teal-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-teal-500 shadow-sm outline-none transition-colors" placeholder="Search active vol..." oninput="window.filterInfoPairing()" onfocus="window.filterInfoPairing()" autocomplete="off" ${isAdminAuthenticated ? '' : 'readonly'}>
                <ul id="infoEditPairingList" class="absolute z-50 w-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg mt-1 shadow-xl hidden max-h-40 overflow-y-auto pb-4 custom-scrollbar"></ul>
            </div>
        </div>`;
@@ -598,8 +685,12 @@ function submitIntegratedQuickEdit() {
 window.initInfoPairing = function(initialStr, sheetUrl) {
    window.infoPairingVols = initialStr ? initialStr.split(/[,|\n]+/).map(s=>s.trim()).filter(s=>s) : [];
    window.updateInfoPairingUI();
-   apiCall('getNamesList', { url: sheetUrl, type: 'volunteer' }).then(res => {
-       if(res.success) window.infoAllAvailableVols = res.names;
+   
+   // Pulls robust architectural data limiting options to active volunteers
+   apiCall('fetchManualPairingData', { sheetUrl: sheetUrl }).then(res => {
+       if(res.success && res.data && res.data.volunteers) {
+           window.infoAllAvailableVols = res.data.volunteers.map(v => v.name);
+       }
    });
 };
 
