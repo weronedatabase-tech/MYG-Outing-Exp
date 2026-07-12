@@ -59,6 +59,66 @@ renderGroupingList();
 }
 
 // ==========================================
+// GROUP DELETION LOGIC
+// ==========================================
+
+window.deleteGroup = function(g, event) {
+if (event) event.stopPropagation();
+if (!confirm(`Are you sure you want to delete Group ${g}? All trainees will be unassigned and ICs removed.`)) return false;
+
+let changed = false;
+let volsInGroup = new Set();
+
+// 1. Unassign all trainees in this group
+(groupingData.trainees || []).forEach(t => {
+if (String(t.group).trim() === String(g)) {
+t.group = "";
+changed = true;
+const updateIndex = pendingGroupingUpdates.findIndex(u => u.name === t.name && u.role === 'TRAINEE');
+if (updateIndex > -1) {
+    pendingGroupingUpdates[updateIndex].group = "";
+} else {
+    pendingGroupingUpdates.push({ role: 'TRAINEE', name: t.name, group: "" });
+}
+
+if (t.volPaired) {
+    t.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v).forEach(v => volsInGroup.add(v.toLowerCase()));
+}
+}
+});
+
+// 2. Remove Group IC from volunteers paired with these trainees
+(groupingData.volunteers || []).forEach(v => {
+if (v.groupIC && volsInGroup.has(v.name.toLowerCase())) {
+v.groupIC = false;
+changed = true;
+let updateIndex = pendingGroupingUpdates.findIndex(u => u.name === v.name && u.role === 'VOLUNTEER');
+if (updateIndex > -1) {
+    pendingGroupingUpdates[updateIndex].groupIC = false;
+} else {
+    pendingGroupingUpdates.push({ role: 'VOLUNTEER', name: v.name, groupIC: false });
+}
+}
+});
+
+// 3. Remove group from active arrays
+activeGroups = activeGroups.filter(x => String(x) !== String(g));
+if (typeof window.extractedActiveGroups !== 'undefined') {
+window.extractedActiveGroups = window.extractedActiveGroups.filter(x => String(x) !== String(g));
+}
+
+lastGroupingLocalChange = Date.now();
+renderGroupingList();
+if (changed) {
+triggerGroupingSync();
+}
+
+showFlashMessage('groupingGlobalStatus', `Group ${g} deleted.`, 'success');
+return true;
+};
+
+
+// ==========================================
 // RENDER VERTICAL LIST UI
 // ==========================================
 
@@ -147,8 +207,11 @@ const innerBorderCol = isUnassigned ? 'border-red-100 dark:border-red-900/20' : 
 
 html += `
 <div class="flex flex-col mb-4">
-<div class="${headerBg} px-3 py-2 rounded-t-lg font-black flex justify-between items-center text-xs md:text-sm uppercase tracking-wide border-b-2 ${borderCol}">
- <span>${title}</span>
+<div class="${headerBg} px-3 py-2 rounded-t-lg font-black flex justify-between items-center text-xs md:text-sm uppercase tracking-wide border-b-2 ${borderCol} relative">
+ <div class="flex items-center gap-2">
+     <span>${title}</span>
+     ${!isUnassigned ? `<button onclick="window.deleteGroup('${g}', event)" class="flex items-center justify-center w-6 h-6 bg-transparent hover:bg-red-500 text-red-500 hover:text-white dark:hover:bg-red-600 rounded shadow-none hover:shadow-sm transition-colors opacity-70 hover:opacity-100" title="Delete Group"><i class="fa-solid fa-trash text-xs"></i></button>` : ''}
+ </div>
  <span class="bg-white/60 dark:bg-black/50 px-2.5 py-0.5 rounded-full text-[10px] shadow-inner">${colTrainees.length}</span>
 </div>
 <div class="bg-white/50 dark:bg-zinc-900/50 p-2 md:p-3 rounded-b-lg border border-t-0 ${innerBorderCol} grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
@@ -184,9 +247,13 @@ if(title) title.innerHTML = `Group for <span class="text-orange-500">${traineeNa
 const grid = document.getElementById('quickGroupGrid');
 if(grid) {
 grid.innerHTML = '';
-let allG = new Set(["1","2","3","4","5", ...activeGroups]);
+let allG = new Set([...activeGroups]);
 Array.from(allG).sort((a,b) => a.localeCompare(b, undefined, {numeric: true})).forEach(g => {
-grid.innerHTML += `<button onclick="handleGroupSelection('${g}')" class="bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-zinc-700 py-2 md:py-3 rounded-lg text-sm font-bold hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors shadow-sm focus:outline-none">Grp ${g}</button>`;
+grid.innerHTML += `
+<div class="relative group/btn">
+    <button onclick="handleGroupSelection('${g}')" class="w-full bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-zinc-700 py-2 md:py-3 rounded-lg text-sm font-bold hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 transition-colors shadow-sm focus:outline-none">Grp ${g}</button>
+    <button onclick="if(window.deleteGroup('${g}', event)) closeQuickGroupModal()" class="absolute -top-1.5 -right-1.5 bg-gray-200 dark:bg-zinc-700 text-gray-500 dark:text-gray-400 hover:bg-red-500 hover:text-white dark:hover:bg-red-600 rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm border border-gray-300 dark:border-zinc-600 transition-colors z-10"><i class="fa-solid fa-xmark"></i></button>
+</div>`;
 });
 }
 
