@@ -419,26 +419,32 @@ callback();
 
 // --- PERSON INFO & INTEGRATED QUICK EDIT ---
 
+window.lastPersonObj = null;
+window.infoPairingVols = [];
+window.infoAllAvailableVols = [];
+
 function showPersonInfo(personObj) {
 if (window.navigator && window.navigator.vibrate) {
 try { window.navigator.vibrate(50); } catch(e){}
 }
 
 if (!personObj) return;
+window.lastPersonObj = personObj;
 
 const ex = personObj.extra || {};
 const role = personObj.role || ex.role || 'TRAINEE';
 let htmlContent = "";
 
 const nameStr = personObj.name || '-';
-const groupNum = personObj.group || ex.v_group || '';
-const groupBadge = groupNum 
-? `<span class="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800 border px-2 py-0.5 rounded font-black text-xs uppercase shadow-sm">Grp ${groupNum}</span>` 
-: `<span class="bg-gray-100 text-gray-500 border-gray-200 dark:bg-zinc-800 dark:text-gray-400 dark:border-zinc-700 border px-2 py-0.5 rounded font-black text-xs uppercase shadow-sm">Unassigned</span>`;
-
 const roleBadge = role === 'TRAINEE' 
 ? `<span class="bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 px-1.5 py-0.5 rounded text-[10px] uppercase font-black tracking-wider shadow-sm">Trainee</span>`
 : `<span class="bg-teal-50 text-teal-600 border border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 px-1.5 py-0.5 rounded text-[10px] uppercase font-black tracking-wider shadow-sm">Volunteer</span>`;
+
+// Inject Title natively into the header bar
+const infoTitle = document.getElementById('personInfoModalTitle');
+if (infoTitle) {
+infoTitle.innerHTML = `<i class="fa-solid fa-circle-info mr-2 text-blue-500 dark:text-blue-400 shrink-0"></i> <span class="truncate flex-1">${nameStr}</span> <div class="shrink-0 ml-2">${roleBadge}</div>`;
+}
 
 // Data resolution based on current view environment
 let meetingOpts = [];
@@ -465,6 +471,9 @@ if (!attVal) attVal = 'y'; // Automatically assume present if loaded in active t
 let meetVal = (personObj.meetingLoc || (role === 'TRAINEE' ? ex.t_meet : ex.v_meet) || '').trim();
 let disVal = (personObj.dismissalLoc || (role === 'TRAINEE' ? ex.t_dismiss : ex.v_dismiss) || '').trim();
 
+let groupVal = personObj.group || ex.v_group || '';
+let pairedVal = personObj.volPaired || ex.t_paired_vol || ex.v_paired_trainee || '';
+
 const generateOpts = (optsArr, currentVal, placeholder) => {
 let html = `<option value="">-- ${placeholder} --</option>`;
 let found = false;
@@ -482,9 +491,15 @@ return html;
 const meetOptionsHtml = generateOpts(meetingOpts, meetVal, "None");
 const disOptionsHtml = generateOpts(dismissalOpts, disVal, "None");
 
-let detailsHtml = `<div class="space-y-3 mt-4 text-sm text-gray-700 dark:text-gray-300">`;
+// Admin Permission Shield Logic
+const adminLockHtml = isAdminAuthenticated ? '' : `
+<div class="absolute inset-0 bg-white/60 dark:bg-black/60 z-20 flex items-center justify-center cursor-pointer rounded-lg backdrop-blur-[1px] transition-all hover:bg-white/40 dark:hover:bg-black/40" onclick="requestAccess(null, () => showPersonInfo(window.lastPersonObj))">
+ <span class="bg-gray-900 dark:bg-gray-100 text-white dark:text-black text-[10px] px-2 py-1 rounded font-bold shadow-md"><i class="fa-solid fa-lock mr-1"></i>Admin Edit</span>
+</div>`;
 
-// Integrated Quick Edit Form (Replaces static Meeting/Dismissal fields)
+let detailsHtml = `<div class="space-y-3 mt-1 text-sm text-gray-700 dark:text-gray-300">`;
+
+// Integrated Quick Edit Form
 detailsHtml += `
 <div class="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-100 dark:border-blue-900/30 space-y-3 shadow-inner">
  <div class="flex items-center gap-2 mb-1 border-b border-blue-200 dark:border-blue-800/50 pb-2">
@@ -497,6 +512,32 @@ detailsHtml += `
  <input type="hidden" id="infoEditName" value="${nameStr}">
 
  <div class="grid grid-cols-1 gap-3">
+     
+     <div class="flex items-center gap-3 relative">
+         ${adminLockHtml}
+         <div class="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-500 shrink-0"><i class="fa-solid fa-users"></i></div>
+         <div class="flex-1">
+             <label class="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5 uppercase tracking-wider">Group</label>
+             <input type="text" id="infoEditGroup" value="${groupVal}" class="w-full bg-white dark:bg-black border border-blue-200 dark:border-blue-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-blue-500 shadow-sm outline-none transition-colors" ${isAdminAuthenticated ? '' : 'readonly'} placeholder="Unassigned">
+         </div>
+     </div>`;
+     
+if (role === 'TRAINEE') {
+ detailsHtml += `
+     <div class="flex items-start gap-3 relative mt-1">
+         ${adminLockHtml}
+         <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0"><i class="fa-solid fa-handshake-angle"></i></div>
+         <div class="flex-1 relative">
+             <label class="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5 uppercase tracking-wider">Paired Vol(s)</label>
+             <input type="hidden" id="infoEditPairingHidden" value="${pairedVal}">
+             <div id="infoEditPairingTags" class="flex flex-wrap gap-1 mb-1"></div>
+             <input type="text" id="infoEditPairingInput" class="w-full bg-white dark:bg-black border border-blue-200 dark:border-blue-800/50 text-gray-900 dark:text-white rounded-lg p-1.5 text-xs focus:border-blue-500 shadow-sm outline-none transition-colors" placeholder="Search vol..." oninput="window.filterInfoPairing()" onfocus="window.filterInfoPairing()" autocomplete="off" ${isAdminAuthenticated ? '' : 'readonly'}>
+             <ul id="infoEditPairingList" class="absolute z-50 w-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg mt-1 shadow-xl hidden max-h-40 overflow-y-auto pb-4 custom-scrollbar"></ul>
+         </div>
+     </div>`;
+}
+
+detailsHtml += `
      <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 shrink-0"><i class="fa-solid fa-clipboard-user"></i></div>
           <div class="flex-1">
@@ -534,7 +575,6 @@ detailsHtml += `
 if (role === 'TRAINEE') {
 const meetFetch = ex.t_meet_fetching || '-';
 const disFetch = ex.t_dismiss_fetching || '-';
-const volPaired = personObj.volPaired || ex.t_paired_vol || '-';
 const dietary = ex.t_dietary || '-';
 const cgContact = ex.m_cg_contact || '-';
 
@@ -562,14 +602,6 @@ if (disFetch !== '-' && disFetch !== '') {
 
 detailsHtml += `
 <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-    <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0 mt-0.5"><i class="fa-solid fa-handshake-angle"></i></div>
-    <div class="flex-1 min-w-0">
-        <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Paired Vol(s)</div>
-        <div class="font-bold text-teal-700 dark:text-teal-400 break-words whitespace-pre-wrap">${volPaired}</div>
-    </div>
-</div>
-
-<div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
     <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-500 shrink-0 mt-0.5"><i class="fa-solid fa-utensils"></i></div>
     <div class="flex-1 min-w-0">
         <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Dietary Restrictions</div>
@@ -586,14 +618,12 @@ detailsHtml += `
 </div>
 `;
 } else if (role === 'VOLUNTEER') {
-const pairedTrainees = personObj.volPaired || ex.v_paired_trainee || '-';
-
 detailsHtml += `
 <div class="flex items-start gap-3 bg-gray-50 dark:bg-zinc-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
     <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-500 shrink-0 mt-0.5"><i class="fa-solid fa-user-group"></i></div>
     <div class="flex-1 min-w-0">
         <div class="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-0.5">Paired Trainee(s)</div>
-        <div class="font-bold text-teal-700 dark:text-teal-400 break-words whitespace-pre-wrap">${pairedTrainees}</div>
+        <div class="font-bold text-teal-700 dark:text-teal-400 break-words whitespace-pre-wrap">${pairedVal}</div>
     </div>
 </div>
 `;
@@ -632,13 +662,6 @@ if (role === 'TRAINEE' && ex.t_one_on_one) {
 }
 
 htmlContent = `
-<div class="flex flex-col gap-2 pb-2">
-<div class="flex items-start justify-between gap-2">
- <h4 class="text-lg md:text-xl font-black text-gray-900 dark:text-white break-words leading-tight flex-1">${nameStr}</h4>
- <div class="shrink-0 mt-0.5">${roleBadge}</div>
-</div>
-<div class="flex items-center">${groupBadge}</div>
-</div>
 ${remarksHtml}
 ${pairingConsiderationsHtml}
 ${detailsHtml}
@@ -660,6 +683,11 @@ footer.innerHTML = `
 `;
 }
 
+// Initialize pairing fuzzy search logic if it's a Trainee
+if (role === 'TRAINEE') {
+window.initInfoPairing(pairedVal, sheetUrl);
+}
+
 const infoModal = document.getElementById('personInfoModal');
 if(infoModal) infoModal.classList.remove('hidden');
 }
@@ -667,6 +695,7 @@ if(infoModal) infoModal.classList.remove('hidden');
 function closePersonInfoModal() {
 const infoModal = document.getElementById('personInfoModal');
 if(infoModal) infoModal.classList.add('hidden');
+window.lastPersonObj = null;
 }
 
 function submitIntegratedQuickEdit() {
@@ -679,26 +708,17 @@ const att = document.getElementById('infoEditAttending').value;
 const meet = document.getElementById('infoEditMeeting').value;
 const dis = document.getElementById('infoEditDismissal').value;
 
+const groupEl = document.getElementById('infoEditGroup');
+const group = groupEl ? groupEl.value.trim() : null;
+
+const pairingEl = document.getElementById('infoEditPairingHidden');
+const pairing = pairingEl ? pairingEl.value.trim() : null;
+
 if (!sheetUrl) return alert("Error: Context URL lost.");
 
-// Optimistic UI Flow
+// Prominent Save Flow
 btn.disabled = true;
-btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved`;
-btn.classList.replace('bg-blue-600', 'bg-green-600');
-btn.classList.replace('border-blue-600', 'border-green-600');
-btn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
-
-// Show background syncing indicator safely depending on current view context
-if (currentActiveView === 'comm-attendance' && typeof setCommAttBtnState === 'function') {
-  setCommAttBtnState('saving');
-} else if (currentActiveView === 'manual-pairing' && typeof setManualPairingSyncButtonState === 'function') {
-  setManualPairingSyncButtonState('saving');
-} else if (currentActiveView === 'manual-grouping' && typeof setGroupingSyncButtonState === 'function') {
-  setGroupingSyncButtonState('saving');
-}
-
-// Close Modal Instantly for zero-latency UX
-setTimeout(() => closePersonInfoModal(), 250);
+btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...`;
 
 const payloadData = {
  "Name": name,
@@ -707,28 +727,143 @@ const payloadData = {
  "Dismissal Location": dis
 };
 
+if (group !== null) {
+ if (role.toLowerCase() === 'trainee') payloadData["Outing Grouping"] = group;
+ else payloadData["Group"] = group; 
+}
+
+if (pairing !== null && role.toLowerCase() === 'trainee') {
+ payloadData["Vol Paired"] = pairing;
+}
+
 const payload = { sheetUrl: sheetUrl, type: role.toLowerCase(), data: payloadData, targetName: name };
 
 apiCall('submitAttendanceData', payload).then(res => {
  if(res.success) {
-     // Background cache rebuild complete, trigger automatic UI data refresh seamlessly
-     if (currentActiveView === 'comm-attendance' && typeof manualSyncCommAttendance === 'function') {
-         manualSyncCommAttendance();
-     } else if (currentActiveView === 'manual-pairing' && typeof manualSyncManualPairing === 'function') {
-         manualSyncManualPairing();
-     } else if (currentActiveView === 'manual-grouping' && typeof manualSyncGrouping === 'function') {
-         manualSyncGrouping();
-     }
+     btn.innerHTML = `<i class="fa-solid fa-check"></i> Save Complete!`;
+     btn.classList.replace('bg-blue-600', 'bg-green-600');
+     btn.classList.replace('border-blue-600', 'border-green-600');
+     btn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
+     
+     // Provide visual confirmation for 1.5s before closing
+     setTimeout(() => {
+         closePersonInfoModal();
+         
+         // Reset Button Visually for next time
+         btn.disabled = false;
+         btn.innerHTML = `<i class="fa-solid fa-save"></i> Save Changes`;
+         btn.classList.replace('bg-green-600', 'bg-blue-600');
+         btn.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
+         btn.classList.replace('border-green-600', 'border-blue-600');
+         
+         // Trigger automatic UI data refresh seamlessly
+         if (currentActiveView === 'comm-attendance' && typeof manualSyncCommAttendance === 'function') {
+             manualSyncCommAttendance();
+         } else if (currentActiveView === 'manual-pairing' && typeof manualSyncManualPairing === 'function') {
+             manualSyncManualPairing();
+         } else if (currentActiveView === 'manual-grouping' && typeof manualSyncGrouping === 'function') {
+             manualSyncGrouping();
+         }
+     }, 1500);
  } else {
-     alert("Save Failed: " + res.message);
-     // Revert the background syncing indicator safely on failure
-     if (currentActiveView === 'comm-attendance' && typeof setCommAttBtnState === 'function') {
-         setCommAttBtnState('error');
-     } else if (currentActiveView === 'manual-pairing' && typeof setManualPairingSyncButtonState === 'function') {
-         setManualPairingSyncButtonState('error');
-     } else if (currentActiveView === 'manual-grouping' && typeof setGroupingSyncButtonState === 'function') {
-         setGroupingSyncButtonState('error');
-     }
+     btn.disabled = false;
+     btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Save Failed`;
+     alert("Error: " + res.message);
  }
 });
 }
+
+// --- INFO MODAL FUZZY SEARCH (PAIRING) ---
+
+window.initInfoPairing = function(initialStr, sheetUrl) {
+window.infoPairingVols = initialStr ? initialStr.split(/[,|\n]+/).map(s=>s.trim()).filter(s=>s) : [];
+window.updateInfoPairingUI();
+
+// Pre-fetch volunteers async
+apiCall('getNamesList', { url: sheetUrl, type: 'volunteer' }).then(res => {
+ if(res.success) window.infoAllAvailableVols = res.names;
+});
+};
+
+window.filterInfoPairing = function() {
+const input = document.getElementById('infoEditPairingInput');
+const list = document.getElementById('infoEditPairingList');
+if(!input || !list) return;
+const filter = input.value.toLowerCase().trim();
+list.innerHTML = "";
+
+if(filter.length === 0 && window.infoAllAvailableVols.length === 0) {
+ list.classList.add('hidden');
+ return;
+}
+
+list.classList.remove('hidden');
+const matches = window.infoAllAvailableVols.filter(v => 
+ v.toLowerCase().includes(filter) && !window.infoPairingVols.includes(v)
+);
+
+matches.forEach(match => {
+ const li = document.createElement('li');
+ li.className = "px-3 py-2 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-zinc-700 hover:bg-teal-600 hover:text-white cursor-pointer text-xs transition-colors last:border-0";
+ li.innerText = match;
+ li.onmousedown = (e) => { e.preventDefault(); window.addInfoPairing(match); };
+ list.appendChild(li);
+});
+
+if (matches.length === 0 && filter.length > 0) {
+ const li = document.createElement('li');
+ li.className = "px-3 py-2 text-xs text-gray-500 dark:text-gray-400 italic bg-white dark:bg-zinc-800 cursor-pointer hover:bg-teal-50 dark:hover:bg-zinc-700";
+ li.innerText = `Press Enter or Click to add "${input.value.trim()}"`;
+ li.onmousedown = (e) => { e.preventDefault(); window.addInfoPairing(input.value.trim()); };
+ list.appendChild(li);
+}
+};
+
+window.addInfoPairing = function(name) {
+if(!name) return;
+if(!window.infoPairingVols.includes(name)) {
+ window.infoPairingVols.push(name);
+ window.updateInfoPairingUI();
+}
+const input = document.getElementById('infoEditPairingInput');
+input.value = "";
+input.focus();
+window.filterInfoPairing();
+};
+
+window.removeInfoPairing = function(name) {
+window.infoPairingVols = window.infoPairingVols.filter(v => v !== name);
+window.updateInfoPairingUI();
+window.filterInfoPairing();
+};
+
+window.updateInfoPairingUI = function() {
+const tags = document.getElementById('infoEditPairingTags');
+const hidden = document.getElementById('infoEditPairingHidden');
+if(!tags || !hidden) return;
+
+tags.innerHTML = window.infoPairingVols.map(v => 
+ `<span class="bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-900/50 dark:text-teal-300 dark:border-teal-700/50 px-2 py-0.5 rounded text-xs flex items-center gap-1">${v} <i class="fa-solid fa-xmark cursor-pointer hover:text-red-500 ml-1" onclick="window.removeInfoPairing('${v.replace(/'/g, "\\'")}')"></i></span>`
+).join('');
+
+hidden.value = window.infoPairingVols.join(', ');
+};
+
+document.addEventListener('keydown', function(e) {
+if (e.target && e.target.id === 'infoEditPairingInput') {
+ if (e.key === 'Enter' || e.key === ',') {
+     e.preventDefault();
+     if (e.target.value.trim()) {
+         window.addInfoPairing(e.target.value.trim());
+     }
+ }
+}
+});
+
+document.addEventListener('click', function(e) {
+const list = document.getElementById('infoEditPairingList');
+const input = document.getElementById('infoEditPairingInput');
+if(list && !list.classList.contains('hidden') && e.target !== input && !list.contains(e.target)) {
+ list.classList.add('hidden');
+}
+});
