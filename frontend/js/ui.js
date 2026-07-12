@@ -293,23 +293,16 @@ function showPersonInfo(personObj) {
        infoTitle.innerHTML = `<i class="fa-solid fa-circle-info mr-2 text-blue-500 dark:text-blue-400 shrink-0"></i> <span class="truncate flex-1">${nameStr}</span> <div class="shrink-0 ml-2">${roleBadge}</div>`;
    }
 
-   let meetingOpts = [];
-   let dismissalOpts = [];
-   let sheetUrl = null;
-
-   if (window.location.pathname.includes('tracker')) {
-       meetingOpts = window.commAttData?.meetingLocs || [];
-       dismissalOpts = window.commAttData?.dismissalLocs || [];
-       sheetUrl = window.currentCommAttSheetUrl;
-   } else if (window.location.pathname.includes('pairing')) {
-       meetingOpts = window.manualPairingData?.meetingLocs || [];
-       dismissalOpts = window.manualPairingData?.dismissalLocs || [];
-       sheetUrl = window.currentManualPairingSheetUrl;
-   } else if (window.location.pathname.includes('grouping')) {
-       meetingOpts = window.groupingData?.meetingLocs || [];
-       dismissalOpts = window.groupingData?.dismissalLocs || [];
-       sheetUrl = window.currentGroupingSheetUrl;
-   }
+   // Resilient context acquisition bypassing URL constraints
+   let meetingOpts = (window.commAttData?.meetingLocs?.length ? window.commAttData.meetingLocs : null) 
+                  || (window.manualPairingData?.meetingLocs?.length ? window.manualPairingData.meetingLocs : null) 
+                  || (window.groupingData?.meetingLocs?.length ? window.groupingData.meetingLocs : null) 
+                  || [];
+   let dismissalOpts = (window.commAttData?.dismissalLocs?.length ? window.commAttData.dismissalLocs : null) 
+                    || (window.manualPairingData?.dismissalLocs?.length ? window.manualPairingData.dismissalLocs : null) 
+                    || (window.groupingData?.dismissalLocs?.length ? window.groupingData.dismissalLocs : null) 
+                    || [];
+   let sheetUrl = window.currentCommAttSheetUrl || window.currentManualPairingSheetUrl || window.currentGroupingSheetUrl;
 
    let attVal = (personObj.attending || '').toLowerCase();
    if (!attVal) attVal = 'y';
@@ -586,11 +579,11 @@ function submitIntegratedQuickEdit() {
                btn.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
                btn.classList.replace('border-green-600', 'border-blue-600');
                
-               if (window.location.pathname.includes('tracker') && typeof manualSyncCommAttendance === 'function') {
+               if (typeof manualSyncCommAttendance === 'function') {
                    manualSyncCommAttendance();
-               } else if (window.location.pathname.includes('pairing') && typeof manualSyncManualPairing === 'function') {
+               } else if (typeof manualSyncManualPairing === 'function') {
                    manualSyncManualPairing();
-               } else if (window.location.pathname.includes('grouping') && typeof manualSyncGrouping === 'function') {
+               } else if (typeof manualSyncGrouping === 'function') {
                    manualSyncGrouping();
                }
            }, 1500);
