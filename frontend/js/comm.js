@@ -1618,6 +1618,53 @@ document.getElementById('busFilterSelect').value = `Bus ${num}`;
 renderBusLists();
 }
 
+function removeBusOption() {
+const juncture = busState.currentJuncture;
+const filterBus = document.getElementById('busFilterSelect').value;
+
+if (!juncture) return;
+if (filterBus === 'ALL') {
+ alert("Please select a specific bus from the dropdown to remove.");
+ return;
+}
+
+if (!confirm(`Are you sure you want to remove ${filterBus}? All trainees assigned to this bus will be unassigned.`)) {
+ return;
+}
+
+// 1. Remove from local busOptions
+busState.busOptions = busState.busOptions.filter(b => b !== filterBus);
+
+// 2. Unassign anyone on this bus locally and queue for sync
+let hasChanges = false;
+const juncKey = '__BUS__' + juncture;
+
+if (commAttData.busAttendance[juncture]) {
+ for (let name in commAttData.busAttendance[juncture]) {
+     if (commAttData.busAttendance[juncture][name] === filterBus) {
+         commAttData.busAttendance[juncture][name] = ""; 
+         
+         if (!pendingCommAttUpdates[juncKey]) pendingCommAttUpdates[juncKey] = {};
+         pendingCommAttUpdates[juncKey][name] = "";
+         
+         hasChanges = true;
+     }
+ }
+}
+
+lastCommAttLocalChange = Date.now();
+
+// 3. Update UI
+renderBusFilterOptions();
+document.getElementById('busFilterSelect').value = 'ALL';
+renderBusLists();
+
+// 4. Sync
+if (hasChanges) {
+ triggerSync();
+}
+}
+
 function getEligibleBusTrainees() {
 const juncture = busState.currentJuncture;
 if(!juncture) return [];
