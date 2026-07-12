@@ -1,6 +1,75 @@
 let currentActiveVols = [];
 let currentVolPairedValue = [];
 
+// MPA Specific Loader for Volunteer App to prevent pulling the massive comm.js bundle
+function loadVolunteerEvents() {
+    const selector = document.getElementById('volSheetSelector');
+    const spinner = document.getElementById('volSheetSpinner');
+
+    const renderData = (data) => {
+        currentSheetList = data;
+        if (selector) {
+            selector.innerHTML = '';
+            selector.disabled = false;
+            data.forEach(item => {
+                let opt = document.createElement('option');
+                opt.value = item.sheetUrl;
+                opt.text = item.displayName;
+                selector.appendChild(opt);
+            });
+            selector.selectedIndex = 0;
+        }
+        if (typeof resetVolForm === 'function') resetVolForm();
+    };
+
+    const localDataStr = localStorage.getItem('myg_sheetList');
+
+    if (localDataStr) {
+        try {
+            const parsed = JSON.parse(localDataStr);
+            if (parsed && parsed.length > 0) {
+                renderData(parsed);
+                if(spinner) spinner.classList.remove('hidden');
+                apiCall('getRecentOutingSheets', null).then(res => {
+                    if(spinner) spinner.classList.add('hidden');
+                    if (res.success && JSON.stringify(res.data) !== localDataStr) {
+                        localStorage.setItem('myg_sheetList', JSON.stringify(res.data));
+                        renderData(res.data);
+                    }
+                });
+                return;
+            }
+        } catch(e) {}
+    }
+
+    if (selector) {
+        selector.innerHTML = '<option disabled selected>↻ Loading events...</option>';
+        selector.disabled = true;
+    }
+    if(spinner) spinner.classList.remove('hidden');
+
+    apiCall('getRecentOutingSheets', null).then(res => {
+        if(spinner) spinner.classList.add('hidden');
+
+        if (res.success) {
+            localStorage.setItem('myg_sheetList', JSON.stringify(res.data));
+            if(res.data.length > 0) {
+                renderData(res.data);
+            } else {
+                if (selector) {
+                    selector.disabled = false;
+                    selector.innerHTML = '<option disabled selected>No upcoming events</option>';
+                }
+            }
+        } else {
+            if (selector) {
+                selector.disabled = false;
+                selector.innerHTML = `<option disabled selected>Error: ${res.message}</option>`;
+            }
+        }
+    });
+}
+
 function autoScrollAndFocus(input) { toggleSearchList(true); setTimeout(() => { input.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); }
 
 function setVolType(type, btn) { 
