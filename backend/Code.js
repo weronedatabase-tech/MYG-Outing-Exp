@@ -193,13 +193,14 @@ cache.removeAll(keysToRemove);
 }
 
 // --- ATOMIC WRITE-THROUGH CACHE (Bypasses Lock Logic internally) ---
-function atomicCacheRebuild(sheetUrl) {
+function atomicCacheRebuild(sheetUrl, ssOpt = null) {
 try {
-fetchCommAttendance(sheetUrl, true, true);
-fetchManualPairingData(sheetUrl, true, true);
-getOutingDetails(sheetUrl, true, true);
-getNamesList(sheetUrl, 'trainee', true, true);
-getNamesList(sheetUrl, 'volunteer', true, true);
+const ss = ssOpt || SpreadsheetApp.openByUrl(sheetUrl);
+fetchCommAttendance(sheetUrl, true, true, ss);
+fetchManualPairingData(sheetUrl, true, true, ss);
+getOutingDetails(sheetUrl, true, true, ss);
+getNamesList(sheetUrl, 'trainee', true, true, ss);
+getNamesList(sheetUrl, 'volunteer', true, true, ss);
 } catch (e) {
 console.log("Atomic cache rebuild failed, invalidating instead: " + e);
 invalidateCaches(sheetUrl);
@@ -528,7 +529,7 @@ folder.setName(newFolderName);
 }
 
 precomputeRecentOutings(); // Instantly update global CRON cache
-atomicCacheRebuild(sheetUrl);
+atomicCacheRebuild(sheetUrl, ss);
 return { success: true, message: "Outing Details Updated!" };
 } catch (e) {
 return { success: false, message: e.toString() };
@@ -578,7 +579,7 @@ updateList("Dismissal Location", form.dismissalLocs, form.dismissalTimes, form.d
 /* =========================================
 FEATURE: GET DETAILED STATS & CONFIGURATIONS
 ========================================= */
-function getOutingDetails(sheetUrl, forceRebuild = false, skipLock = false) {
+function getOutingDetails(sheetUrl, forceRebuild = false, skipLock = false, ssOpt = null) {
 const cacheKey = getCacheKey("stats", sheetUrl);
 
 if (!forceRebuild) {
@@ -596,7 +597,7 @@ let cached = getLargeCache(cacheKey);
 if (cached) { try { return JSON.parse(cached); } catch(e) {} }
 }
 
-const ss = SpreadsheetApp.openByUrl(sheetUrl);
+const ss = ssOpt || SpreadsheetApp.openByUrl(sheetUrl);
 const tSheet = ss.getSheetByName("Traine Attendance");
 const vSheet = ss.getSheetByName("Volunteer Attendance");
 const infoSheet = ss.getSheetByName("OutingInformation");
@@ -779,7 +780,7 @@ return { success: false, message: e.toString() };
 /* =========================================
 MANUAL PAIRING & GROUPING DATA ENGINE
 ========================================= */
-function fetchManualPairingData(sheetUrl, forceRebuild = false, skipLock = false) {
+function fetchManualPairingData(sheetUrl, forceRebuild = false, skipLock = false, ssOpt = null) {
 const cacheKey = getCacheKey("pair", sheetUrl);
 
 if (!forceRebuild) {
@@ -795,7 +796,7 @@ let cached = getLargeCache(cacheKey);
 if (cached) { try { return JSON.parse(cached); } catch(e) {} }
 }
 
-const ss = SpreadsheetApp.openByUrl(sheetUrl);
+const ss = ssOpt || SpreadsheetApp.openByUrl(sheetUrl);
 let tSheet = ss.getSheetByName("Trainee Attendance");
 if (!tSheet) tSheet = ss.getSheetByName("Trainee Attendance ");
 const vSheet = ss.getSheetByName("Volunteer Attendance");
@@ -930,7 +931,7 @@ if (changed) {
 let tOutput = tData.map((vals, i) => vals.map((v, c) => tFormulas[i][c] !== "" ? tFormulas[i][c] : v));
 tRange.setValues(tOutput);
 SpreadsheetApp.flush();
-atomicCacheRebuild(sheetUrl); // Write-Through Cache
+atomicCacheRebuild(sheetUrl, ss); // Write-Through Cache
 }
 
 return { success: true };
@@ -1056,7 +1057,7 @@ if (changed) {
 }
 
 SpreadsheetApp.flush();
-atomicCacheRebuild(sheetUrl); // Write-Through Cache
+atomicCacheRebuild(sheetUrl, ss); // Write-Through Cache
 return { success: true };
 } catch(e) {
 return { success: false, message: e.toString() };
@@ -1145,7 +1146,7 @@ volPairedRange.setValues(volPairedValues);
 SpreadsheetApp.flush(); 
 }
 }
-atomicCacheRebuild(sheetUrl);
+atomicCacheRebuild(sheetUrl, ss);
 return { success: true, message: "✅ Auto Pairing Complete!\nVolunteer Paired column updated." };
 } catch (e) { 
 return { success: false, message: e.toString() }; 
@@ -1249,7 +1250,7 @@ tRange.setValues(output);
 SpreadsheetApp.flush();
 }
 }
-atomicCacheRebuild(sheetUrl);
+atomicCacheRebuild(sheetUrl, ss);
 return { success: true, message: "✅ Auto Grouping Complete!\nOuting Grouping column updated. Conflicting pairings were left unassigned." };
 } catch (e) { 
 return { success: false, message: e.toString() }; 
@@ -1258,79 +1259,12 @@ lock.releaseLock();
 }
 }
 
-/* =========================================
-CORE LOGIC 3: SHEET MAINTENANCE (AUTO)
-========================================= */
-function runSheetMaintenance(sheetUrl) {
-const lock = LockService.getScriptLock();
-try {
-if (!lock.tryLock(15000)) return; 
-const ss = SpreadsheetApp.openByUrl(sheetUrl);
-let tSheet = ss.getSheetByName("Trainee Attendance");
-if (!tSheet) tSheet = ss.getSheetByName("Trainee Attendance ");
-const vSheet = ss.getSheetByName("Volunteer Attendance");
-if (!tSheet || !vSheet) return;
-
-const performNativeSort = (sheet, attIdx, projIdx) => {
-const lastRow = sheet.getLastRow();
-const lastCol = sheet.getLastColumn();
-if (lastRow < 2) return;
-
-const nameData = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-const attData = sheet.getRange(2, attIdx + 1, lastRow - 1, 1).getValues();
-
-const weights = nameData.map((r, i) => {
-const name = r[0] ? r[0].toString().trim() : "";
-const att = attData[i][0] ? attData[i][0].toString().trim().toLowerCase() : "";
-if (name === "") return [9];
-if (att === 'y') return [1];
-if (att === 'n') return [2];
-return [3];
-});
-
-const tempColIdx = lastCol + 1;
-sheet.getRange(2, tempColIdx, lastRow - 1, 1).setValues(weights);
-
-const sortSpec = [{ column: tempColIdx, ascending: true }];
-if (projIdx > -1) {
-sortSpec.push({ column: projIdx + 1, ascending: true });
-}
-sortSpec.push({ column: 1, ascending: true }); // Priority 6: Name
-
-const sortRange = sheet.getRange(2, 1, lastRow - 1, tempColIdx);
-sortRange.sort(sortSpec);
-
-sheet.deleteColumn(tempColIdx);
-sheet.showRows(2, lastRow - 1);
-};
-
-let vLastRow = vSheet.getLastRow();
-if (vLastRow > 1) {
-const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues()[0];
-const vAttIdx = getColIndex(vHeaders, "attending");
-const vProjIdx = getColIndex(vHeaders, "project");
-if (vAttIdx > -1) performNativeSort(vSheet, vAttIdx, vProjIdx);
-}
-
-let tLastRow = tSheet.getLastRow();
-if (tLastRow > 1) {
-const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
-const tAttIdx = getColIndex(tHeaders, "attending");
-const tProjIdx = getColIndex(tHeaders, "project");
-if (tAttIdx > -1) performNativeSort(tSheet, tAttIdx, tProjIdx);
-}
-
-} catch (e) { console.log(e); }
-finally {
-lock.releaseLock();
-}
-}
 
 /* =========================================
 LIVE ATTENDANCE LOGIC (GROUPING TAB)
 ========================================= */
 
-function fetchCommAttendance(sheetUrl, forceRebuild = false, skipLock = false) {
+function fetchCommAttendance(sheetUrl, forceRebuild = false, skipLock = false, ssOpt = null) {
 const cacheKey = getCacheKey("comm", sheetUrl);
 
 if (!forceRebuild) {
@@ -1346,7 +1280,7 @@ let cached = getLargeCache(cacheKey);
 if (cached) { try { return JSON.parse(cached); } catch(e) {} }
 }
 
-const ss = SpreadsheetApp.openByUrl(sheetUrl);
+const ss = ssOpt || SpreadsheetApp.openByUrl(sheetUrl);
 let sheet = ss.getSheetByName("Trainee Attendance") || ss.getSheetByName("Trainee Attendance ");
 if (!sheet) return { success: false, message: "Trainee Attendance tab not found." };
 
@@ -1556,7 +1490,7 @@ if (changed) {
 
 if (changedGlobal) {
 SpreadsheetApp.flush();
-atomicCacheRebuild(sheetUrl);
+atomicCacheRebuild(sheetUrl, ss);
 }
 return { success: true };
 } catch(e) {
@@ -1592,9 +1526,9 @@ if (lastRow > 1) {
  sheet.getRange(2, newColIdx, lastRow - 1).insertCheckboxes();
 }
 SpreadsheetApp.flush();
-atomicCacheRebuild(sheetUrl);
+atomicCacheRebuild(sheetUrl, ss);
 
-return fetchCommAttendance(sheetUrl, true, true);
+return fetchCommAttendance(sheetUrl, true, true, ss);
 } catch(e) {
 return { success: false, message: e.toString() };
 } finally {
@@ -1624,8 +1558,8 @@ const juncIdx = headers.indexOf(targetHeader);
 if (juncIdx > -1) {
  sheet.deleteColumn(juncIdx + 1);
  SpreadsheetApp.flush();
- atomicCacheRebuild(sheetUrl);
- return fetchCommAttendance(sheetUrl, true, true);
+ atomicCacheRebuild(sheetUrl, ss);
+ return fetchCommAttendance(sheetUrl, true, true, ss);
 }
 
 return { success: false, message: "Juncture not found." };
@@ -1679,7 +1613,7 @@ return { success: true, tHeaders: tHeaders, vHeaders: vHeaders };
 } catch(e) { return { success: false, message: e.toString() }; }
 }
 
-function getNamesList(sheetUrl, type, forceRebuild = false, skipLock = false) {
+function getNamesList(sheetUrl, type, forceRebuild = false, skipLock = false, ssOpt = null) {
 const cacheKey = getCacheKey("names_" + type, sheetUrl);
 
 if (!forceRebuild) {
@@ -1696,7 +1630,7 @@ if (cached) { try { return JSON.parse(cached); } catch(e) {} }
 }
 
 if (!sheetUrl || sheetUrl === "") return { success: false, message: "Invalid Sheet URL" };
-const ss = SpreadsheetApp.openByUrl(sheetUrl);
+const ss = ssOpt || SpreadsheetApp.openByUrl(sheetUrl);
 const tabName = type === 'trainee' ? "Trainee Attendance" : "Volunteer Attendance";
 let sheet = ss.getSheetByName(tabName);
 if(!sheet && type === 'trainee') sheet = ss.getSheetByName("Trainee Attendance ");
@@ -1849,9 +1783,9 @@ try {
 lock.waitLock(15000);
 res = _submitAttendanceDataInner(form);
 
-if (res && res.success) {
+if (res && res.success && res.ss) {
  SpreadsheetApp.flush();
- atomicCacheRebuild(form.sheetUrl); // Write-Through Cache
+ atomicCacheRebuild(form.sheetUrl, res.ss); // Write-Through Cache utilizing shared SS object
 }
 } catch(e) {
 return { success: false, message: e.toString() };
@@ -1859,10 +1793,7 @@ return { success: false, message: e.toString() };
 lock.releaseLock();
 }
 
-if (res && res.success) {
-runSheetMaintenance(form.sheetUrl);
-}
-return res;
+return { success: res ? res.success : false, message: res ? res.message : "Unknown Error" };
 }
 
 function _submitAttendanceDataInner(form) {
@@ -1911,15 +1842,8 @@ break;
 }
 }
 
-const colAVals = sheet.getRange("A:A").getValues();
-let insertRow = -1;
-for (let k = 1; k < colAVals.length; k++) {
-if (!colAVals[k][0]) {
-insertRow = k + 1;
-break;
-}
-}
-if (insertRow === -1) insertRow = sheet.getLastRow() + 1;
+let insertRow = sheet.getLastRow() + 1;
+if (insertRow < 2) insertRow = 2; // Prevent overwriting headers
 sheet.getRange(insertRow, 1, 1, newRow.length).setValues([newRow]);
 
 // --- UPDATE TEMPLATE (Name AND Project) ---
@@ -1933,15 +1857,8 @@ const tSheet = tSS.getSheetByName("Volunteer Attendance");
 const tFinder = tSheet.getRange("A:A").createTextFinder(name).matchEntireCell(true);
 
 if (!tFinder.findNext()) {
-const tColA = tSheet.getRange("A:A").getValues();
-let tInsertRow = -1;
-for (let m = 1; m < tColA.length; m++) {
-if (!tColA[m][0]) {
-tInsertRow = m + 1;
-break;
-}
-}
-if (tInsertRow === -1) tInsertRow = tSheet.getLastRow() + 1;
+let tInsertRow = tSheet.getLastRow() + 1;
+if (tInsertRow < 2) tInsertRow = 2;
 
 tSheet.getRange(tInsertRow, 1).setValue(name);
 
@@ -1956,7 +1873,7 @@ tSheet.getRange(tInsertRow, tProjIdx + 1).setValue(projectVal);
 }
 } catch (err) { console.log("Template update failed: " + err.toString()); }
 
-return { success: true, message: "New volunteer added successfully & Attendance updated!" };
+return { success: true, message: "New volunteer added successfully & Attendance updated!", ss: ss };
 } else if (form.type === 'trainee') {
 let newRow = new Array(rawHeaders.length).fill("");
 newRow[0] = name;
@@ -1978,15 +1895,8 @@ break;
 }
 }
 
-const colAVals = sheet.getRange("A:A").getValues();
-let insertRow = -1;
-for (let k = 1; k < colAVals.length; k++) {
-if (!colAVals[k][0]) {
-insertRow = k + 1;
-break;
-}
-}
-if (insertRow === -1) insertRow = sheet.getLastRow() + 1;
+let insertRow = sheet.getLastRow() + 1;
+if (insertRow < 2) insertRow = 2; // Prevent overwriting headers
 sheet.getRange(insertRow, 1, 1, newRow.length).setValues([newRow]);
 
 // Inject checkboxes for dynamic columns
@@ -2078,6 +1988,6 @@ if (tVolPairedIdx > -1) {
 }
 }
 
-return { success: true, message: "Attendance updated successfully!" };
+return { success: true, message: "Attendance updated successfully!", ss: ss };
 } catch(e) { return { success: false, message: e.toString() }; }
 }
