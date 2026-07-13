@@ -760,13 +760,6 @@ if (container) {
 container.classList.remove('hidden');
 }
 
-// Force scroll container to allow horizontal scrolling on narrow screens
-const scrollContainer = preview ? preview.parentElement : null;
-if (scrollContainer) {
-scrollContainer.classList.remove('overflow-x-hidden');
-scrollContainer.classList.add('overflow-x-auto');
-}
-
 buildExportTable();
 document.getElementById('exportTableModal').classList.remove('hidden');
 }
@@ -991,7 +984,7 @@ allTrs.push(`<tr style="background-color: ${bgColor};">
 }
 
 // Slice rows into distinct pages to maintain aspect ratio resolution on long tables
-// Enforce min-width: 800px so mobile phones don't squish the text into heavy wrapping
+// UI remains responsive (no fixed width), but onclone forces the width for the canvas snapshot
 const ROWS_PER_PAGE = 18;
 let pagesHtml = '';
 
@@ -999,13 +992,14 @@ if (allTrs.length === 0) {
 allTrs.push(`<tr><td colspan="4" style="padding: 10px; text-align: center; font-style: italic;">No data.</td></tr>`);
 }
 
+let pageIndex = 1;
 for (let i = 0; i < allTrs.length; i += ROWS_PER_PAGE) {
 const chunk = allTrs.slice(i, i + ROWS_PER_PAGE);
 
 pagesHtml += `
-<div class="export-table-page" style="background: #ffffff; padding: 24px; margin-bottom: 24px; border-radius: 8px; border: 1px solid #e5e7eb; min-width: 800px; box-sizing: border-box;">
+<div id="export-page-${pageIndex}" class="export-table-page" style="background: #ffffff; padding: 16px; margin-bottom: 24px; border-radius: 8px; border: 1px solid #e5e7eb; box-sizing: border-box;">
   <div style="font-size: 13px; color: #6b7280; margin-bottom: 12px; text-align: right; font-family: sans-serif; font-weight: bold;">
-     Page ${Math.floor(i / ROWS_PER_PAGE) + 1} of ${Math.ceil(allTrs.length / ROWS_PER_PAGE)}
+     Page ${pageIndex} of ${Math.ceil(allTrs.length / ROWS_PER_PAGE)}
   </div>
   <table style="font-family: Arial, sans-serif; border: 1px solid #333; table-layout: fixed; width: 100%; word-wrap: break-word; background-color: #ffffff; border-collapse: collapse;">
   <thead>
@@ -1021,6 +1015,7 @@ pagesHtml += `
   </tbody>
   </table>
 </div>`;
+pageIndex++;
 }
 
 container.innerHTML = pagesHtml;
@@ -1053,11 +1048,29 @@ let dataUrls = [];
 
 for (let i = 0; i < pages.length; i++) {
    const pageEl = pages[i];
+   const pageId = pageEl.id;
+   
    const canvas = await html2canvas(pageEl, {
-       scale: 2.5, // 800px base width * 2.5 = 2000px wide image. Perfect resolution, avoids iOS memory crash.
+       scale: 3, // 600px width * 3 = 1800px output. High-res while respecting 600px desktop format.
        backgroundColor: '#ffffff',
        useCORS: true,
-       logging: false
+       logging: false,
+       windowWidth: 600,
+       onclone: (clonedDoc) => {
+           const clonedPage = clonedDoc.getElementById(pageId);
+           if (clonedPage) {
+               clonedPage.style.width = '600px';
+               clonedPage.style.minWidth = '600px';
+               clonedPage.style.maxWidth = '600px';
+               // Prevent parent containers from clipping the 600px forced layout
+               let p = clonedPage.parentElement;
+               while(p && p.tagName !== 'HTML') {
+                   p.style.overflow = 'visible';
+                   p.style.width = 'auto';
+                   p = p.parentElement;
+               }
+           }
+       }
    });
 
    const dataUrl = canvas.toDataURL('image/png', 1.0);
