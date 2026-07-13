@@ -782,29 +782,13 @@ allGroups.add(String(t.group).trim());
 
 let sortedGroups = Array.from(allGroups).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
 
-let html = `
-<table class="w-full text-left border-collapse text-[9px] md:text-xs text-gray-800" style="font-family: Arial, sans-serif; border: 1px solid #333; table-layout: fixed; width: 100%; word-wrap: break-word; background-color: #ffffff;">
-<thead>
-<tr style="background-color: #333; color: #fff;">
- <th style="padding: 8px; border: 1px solid #555; width: 28%; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Volunteer</th>
- <th style="padding: 8px; border: 1px solid #555; width: 28%; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Trainee(s)</th>
- <th style="padding: 8px; border: 1px solid #555; width: 12%; vertical-align: middle; text-align: center; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Grp</th>
- <th style="padding: 8px; border: 1px solid #555; width: 32%; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Remarks</th>
-</tr>
-</thead>
-<tbody>
-`;
-
-if (sortedGroups.length === 0 && groupingData.volunteers.length === 0 && groupingData.trainees.length === 0) {
-html += `<tr><td colspan="4" style="padding: 10px; text-align: center; font-style: italic;">No data.</td></tr>`;
-}
-
 const volLookup = new Map();
 groupingData.volunteers.forEach(v => {
 volLookup.set(v.name.toLowerCase(), v);
 });
 
 let displayedVols = new Set();
+let allTrs = [];
 
 sortedGroups.forEach((g, index) => {
 const bgColor = EXPORT_COLORS[index % EXPORT_COLORS.length];
@@ -855,11 +839,11 @@ return a.name.localeCompare(b.name);
 });
 
 if (rows.length === 0 && unpairedTrainees.length === 0) {
-html += `<tr style="background-color: ${bgColor};">
+allTrs.push(`<tr style="background-color: ${bgColor};">
  <td colspan="2" style="padding: 8px; border: 1px solid #ccc; font-style: italic; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">No assignments</td>
  <td style="padding: 8px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.4; font-size: 13px; color: #333;">${g}</td>
  <td style="padding: 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;"></td>
-</tr>`;
+</tr>`);
 }
 
 rows.forEach(r => {
@@ -881,22 +865,22 @@ if (r.volRemark) allRemarks.push(`<strong>[Vol] ${r.name}:</strong> ${r.volRemar
 if (r.remarks.length > 0) allRemarks = allRemarks.concat(r.remarks);
 let rDisplay = allRemarks.join('<br><br>');
 
-html += `<tr style="background-color: ${bgColor};">
+allTrs.push(`<tr style="background-color: ${bgColor};">
  <td style="padding: 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${volDisplay}</td>
  <td style="padding: 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${tDisplay}</td>
  <td style="padding: 8px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.4; font-size: 13px; color: #333;">${g}</td>
  <td contenteditable="true" style="padding: 8px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
-</tr>`;
+</tr>`);
 });
 
 unpairedTrainees.forEach(ut => {
 let rDisplay = ut.remarks ? `<strong>[Trn] ${ut.name}:</strong> ${ut.remarks}` : '';
-html += `<tr style="background-color: ${bgColor};">
+allTrs.push(`<tr style="background-color: ${bgColor};">
  <td style="padding: 8px; border: 1px solid #ccc; font-weight: bold; color: #dc2626; text-align: center; vertical-align: middle; line-height: 1.4; font-size: 13px;">-</td>
  <td style="padding: 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${ut.name}</td>
  <td style="padding: 8px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.4; font-size: 13px; color: #333;">${g}</td>
  <td contenteditable="true" style="padding: 8px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
-</tr>`;
+</tr>`);
 });
 });
 
@@ -980,30 +964,61 @@ if (r.volRemark) allRemarks.push(`<strong>[Vol] ${r.name}:</strong> ${r.volRemar
 if (r.remarks.length > 0) allRemarks = allRemarks.concat(r.remarks);
 let rDisplay = allRemarks.join('<br><br>');
 
-html += `<tr style="background-color: ${bgColor};">
+allTrs.push(`<tr style="background-color: ${bgColor};">
    <td style="padding: 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${volDisplay}</td>
    <td style="padding: 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${tDisplay}</td>
    <td style="padding: 8px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.4; font-size: 13px; color: #333;">-</td>
    <td contenteditable="true" style="padding: 8px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
-</tr>`;
+</tr>`);
 });
 
 orphanedTrainees.forEach(ut => {
 let rDisplay = ut.remarks ? `<strong>[Trn] ${ut.name}:</strong> ${ut.remarks}` : '';
-html += `<tr style="background-color: ${bgColor};">
+allTrs.push(`<tr style="background-color: ${bgColor};">
    <td style="padding: 8px; border: 1px solid #ccc; font-weight: bold; color: #dc2626; text-align: center; vertical-align: middle; line-height: 1.4; font-size: 13px;">-</td>
    <td style="padding: 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${ut.name}</td>
    <td style="padding: 8px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.4; font-size: 13px; color: #333;">-</td>
    <td contenteditable="true" style="padding: 8px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
-</tr>`;
+</tr>`);
 });
 }
 
-html += `</tbody></table>`;
-container.innerHTML = html;
+// Slice rows into distinct pages to maintain aspect ratio resolution on long tables
+const ROWS_PER_PAGE = 18;
+let pagesHtml = '';
+
+if (allTrs.length === 0) {
+allTrs.push(`<tr><td colspan="4" style="padding: 10px; text-align: center; font-style: italic;">No data.</td></tr>`);
 }
 
-let generatedImageBlob = null; 
+for (let i = 0; i < allTrs.length; i += ROWS_PER_PAGE) {
+const chunk = allTrs.slice(i, i + ROWS_PER_PAGE);
+
+pagesHtml += `
+<div class="export-table-page" style="background: #ffffff; padding: 12px; margin-bottom: 16px; border-radius: 8px; border: 1px solid #e5e7eb;">
+  <div style="font-size: 11px; color: #6b7280; margin-bottom: 8px; text-align: right; font-family: sans-serif; font-weight: bold;">
+     Page ${Math.floor(i / ROWS_PER_PAGE) + 1} of ${Math.ceil(allTrs.length / ROWS_PER_PAGE)}
+  </div>
+  <table class="w-full text-left border-collapse text-[9px] md:text-xs text-gray-800" style="font-family: Arial, sans-serif; border: 1px solid #333; table-layout: fixed; width: 100%; word-wrap: break-word; background-color: #ffffff;">
+  <thead>
+  <tr style="background-color: #333; color: #fff;">
+   <th style="padding: 8px; border: 1px solid #555; width: 28%; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Volunteer</th>
+   <th style="padding: 8px; border: 1px solid #555; width: 28%; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Trainee(s)</th>
+   <th style="padding: 8px; border: 1px solid #555; width: 12%; vertical-align: middle; text-align: center; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Grp</th>
+   <th style="padding: 8px; border: 1px solid #555; width: 32%; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Remarks</th>
+  </tr>
+  </thead>
+  <tbody>
+      ${chunk.join('')}
+  </tbody>
+  </table>
+</div>`;
+}
+
+container.innerHTML = pagesHtml;
+}
+
+let generatedImageBlobs = []; 
 
 async function shareExportTable() {
 const container = document.getElementById('exportTableContainer');
@@ -1023,36 +1038,47 @@ setTimeout(async () => {
 try {
 if (typeof html2canvas === 'undefined') throw new Error("html2canvas not loaded");
 
-const canvas = await html2canvas(container, {
- scale: 4, 
- backgroundColor: '#ffffff',
- useCORS: true,
- logging: false,
- windowWidth: container.scrollWidth,
- windowHeight: container.scrollHeight
-});
+const pages = container.querySelectorAll('.export-table-page');
+let previewHtml = `<p class="text-xs text-green-600 dark:text-green-400 font-bold mb-2 text-center">Images ready! Long press to save or share directly.</p>`;
+generatedImageBlobs = [];
+let dataUrls = [];
 
-const dataUrl = canvas.toDataURL('image/png', 1.0);
+for (let i = 0; i < pages.length; i++) {
+   const pageEl = pages[i];
+   const canvas = await html2canvas(pageEl, {
+       scale: 4, 
+       backgroundColor: '#ffffff',
+       useCORS: true,
+       logging: false,
+       windowWidth: pageEl.scrollWidth,
+       windowHeight: pageEl.scrollHeight
+   });
+
+   const dataUrl = canvas.toDataURL('image/png', 1.0);
+   dataUrls.push(dataUrl);
+   previewHtml += `<img src="${dataUrl}" class="w-full h-auto shadow-md rounded border border-gray-200 dark:border-zinc-700 mx-auto mb-4" style="display:block;" />`;
+
+   const blob = await (await fetch(dataUrl)).blob();
+   generatedImageBlobs.push(blob);
+}
 
 container.classList.add('hidden');
 preview.classList.remove('hidden');
-preview.innerHTML = `<p class="text-xs text-green-600 dark:text-green-400 font-bold mb-2 text-center">Image ready! Long press to save or share directly.</p><img src="${dataUrl}" class="w-full h-auto shadow-md rounded border border-gray-200 dark:border-zinc-700 mx-auto" style="display:block;" />`;
-
-generatedImageBlob = await (await fetch(dataUrl)).blob();
+preview.innerHTML = previewHtml;
 
 btn.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Share via Apps';
 btn.onclick = executeNativeShare;
 btn.className = 'px-4 md:px-5 py-2 md:py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-colors';
 
-if (currentGroupingSheetUrl) {
- apiCall('uploadExportTable', {
-     sheetUrl: currentGroupingSheetUrl,
-     imageBase64: dataUrl
- }).then(res => {
-     if(res.success) {
-         showFlashMessage('groupingGlobalStatus', "Backup saved to Drive.", 'success');
-     }
- });
+if (currentGroupingSheetUrl && dataUrls.length > 0) {
+   apiCall('uploadExportTable', {
+       sheetUrl: currentGroupingSheetUrl,
+       imageBase64: dataUrls[0]
+   }).then(res => {
+       if(res.success) {
+           showFlashMessage('groupingGlobalStatus', "Backup saved to Drive.", 'success');
+       }
+   });
 }
 
 } catch (e) {
@@ -1066,22 +1092,25 @@ btn.disabled = false;
 }
 
 async function executeNativeShare() {
-if (!generatedImageBlob) return;
+if (!generatedImageBlobs || generatedImageBlobs.length === 0) return;
 
-const file = new File([generatedImageBlob], 'outing-groups.png', { type: 'image/png' });
+const filesArray = generatedImageBlobs.map((blob, index) => {
+return new File([blob], `outing-groups-page-${index + 1}.png`, { type: 'image/png' });
+});
 
 try {
-if (navigator.canShare && navigator.canShare({ files: [file] })) {
+if (navigator.canShare && navigator.canShare({ files: filesArray })) {
 await navigator.share({
- title: 'Outing Groups',
- files: [file]
+   title: 'Outing Groups',
+   files: filesArray
 });
 } else {
 if (navigator.clipboard && window.ClipboardItem) {
- await navigator.clipboard.write([new ClipboardItem({ 'image/png': generatedImageBlob })]);
- showFlashMessage('groupingGlobalStatus', "Table copied to clipboard!", 'success');
+   const clipboardItems = generatedImageBlobs.map(blob => new ClipboardItem({ 'image/png': blob }));
+   await navigator.clipboard.write(clipboardItems);
+   showFlashMessage('groupingGlobalStatus', "Tables copied to clipboard!", 'success');
 } else {
- alert("Sharing not supported on this device. Long press the image to save it.");
+   alert("Sharing not supported on this device. Long press the images to save them.");
 }
 }
 } catch (e) {
