@@ -2006,6 +2006,13 @@ if (selectEl) {
    selectEl.classList.add('pulse-red');
    setTimeout(() => selectEl.classList.remove('pulse-red'), 800);
 }
+
+const searchInput = document.getElementById('busSearchInput');
+if (searchInput) searchInput.value = '';
+const searchResults = document.getElementById('busSearchResults');
+if (searchResults) searchResults.classList.add('hidden');
+if (typeof toggleClearBtn === 'function') toggleClearBtn('busSearchInput');
+
 return;
 }
 
