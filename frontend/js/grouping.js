@@ -760,6 +760,13 @@ if (container) {
 container.classList.remove('hidden');
 }
 
+// Force scroll container to allow horizontal scrolling on narrow screens
+const scrollContainer = preview ? preview.parentElement : null;
+if (scrollContainer) {
+scrollContainer.classList.remove('overflow-x-hidden');
+scrollContainer.classList.add('overflow-x-auto');
+}
+
 buildExportTable();
 document.getElementById('exportTableModal').classList.remove('hidden');
 }
@@ -840,9 +847,9 @@ return a.name.localeCompare(b.name);
 
 if (rows.length === 0 && unpairedTrainees.length === 0) {
 allTrs.push(`<tr style="background-color: ${bgColor};">
- <td colspan="2" style="padding: 10px 8px; border: 1px solid #ccc; font-style: italic; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">No assignments</td>
- <td style="padding: 10px 8px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.4; font-size: 13px; color: #333;">${g}</td>
- <td style="padding: 10px 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;"></td>
+ <td colspan="2" style="padding: 6px 4px; border: 1px solid #ccc; font-style: italic; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;">No assignments</td>
+ <td style="padding: 6px 4px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.3; font-size: 11px; color: #333;">${g}</td>
+ <td style="padding: 6px 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;"></td>
 </tr>`);
 }
 
@@ -866,20 +873,20 @@ if (r.remarks.length > 0) allRemarks = allRemarks.concat(r.remarks);
 let rDisplay = allRemarks.join('<br><br>');
 
 allTrs.push(`<tr style="background-color: ${bgColor};">
- <td style="padding: 10px 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${volDisplay}</td>
- <td style="padding: 10px 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${tDisplay}</td>
- <td style="padding: 10px 8px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.4; font-size: 13px; color: #333;">${g}</td>
- <td contenteditable="true" style="padding: 10px 8px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
+ <td style="padding: 6px 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;">${volDisplay}</td>
+ <td style="padding: 6px 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;">${tDisplay}</td>
+ <td style="padding: 6px 4px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.3; font-size: 11px; color: #333;">${g}</td>
+ <td contenteditable="true" style="padding: 6px 4px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
 </tr>`);
 });
 
 unpairedTrainees.forEach(ut => {
 let rDisplay = ut.remarks ? `<strong>[Trn] ${ut.name}:</strong> ${ut.remarks}` : '';
 allTrs.push(`<tr style="background-color: ${bgColor};">
- <td style="padding: 10px 8px; border: 1px solid #ccc; font-weight: bold; color: #dc2626; text-align: center; vertical-align: middle; line-height: 1.4; font-size: 13px;">-</td>
- <td style="padding: 10px 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${ut.name}</td>
- <td style="padding: 10px 8px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.4; font-size: 13px; color: #333;">${g}</td>
- <td contenteditable="true" style="padding: 10px 8px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
+ <td style="padding: 6px 4px; border: 1px solid #ccc; font-weight: bold; color: #dc2626; text-align: center; vertical-align: middle; line-height: 1.3; font-size: 11px;">-</td>
+ <td style="padding: 6px 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;">${ut.name}</td>
+ <td style="padding: 6px 4px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.3; font-size: 11px; color: #333;">${g}</td>
+ <td contenteditable="true" style="padding: 6px 4px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
 </tr>`);
 });
 });
@@ -965,20 +972,20 @@ if (r.remarks.length > 0) allRemarks = allRemarks.concat(r.remarks);
 let rDisplay = allRemarks.join('<br><br>');
 
 allTrs.push(`<tr style="background-color: ${bgColor};">
-   <td style="padding: 10px 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${volDisplay}</td>
-   <td style="padding: 10px 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${tDisplay}</td>
-   <td style="padding: 10px 8px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.4; font-size: 13px; color: #333;">-</td>
-   <td contenteditable="true" style="padding: 10px 8px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
+   <td style="padding: 6px 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;">${volDisplay}</td>
+   <td style="padding: 6px 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;">${tDisplay}</td>
+   <td style="padding: 6px 4px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.3; font-size: 11px; color: #333;">-</td>
+   <td contenteditable="true" style="padding: 6px 4px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
 </tr>`);
 });
 
 orphanedTrainees.forEach(ut => {
 let rDisplay = ut.remarks ? `<strong>[Trn] ${ut.name}:</strong> ${ut.remarks}` : '';
 allTrs.push(`<tr style="background-color: ${bgColor};">
-   <td style="padding: 10px 8px; border: 1px solid #ccc; font-weight: bold; color: #dc2626; text-align: center; vertical-align: middle; line-height: 1.4; font-size: 13px;">-</td>
-   <td style="padding: 10px 8px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;">${ut.name}</td>
-   <td style="padding: 10px 8px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.4; font-size: 13px; color: #333;">-</td>
-   <td contenteditable="true" style="padding: 10px 8px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 13px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
+   <td style="padding: 6px 4px; border: 1px solid #ccc; font-weight: bold; color: #dc2626; text-align: center; vertical-align: middle; line-height: 1.3; font-size: 11px;">-</td>
+   <td style="padding: 6px 4px; border: 1px solid #ccc; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;">${ut.name}</td>
+   <td style="padding: 6px 4px; border: 1px solid #ccc; text-align: center; font-weight: bold; vertical-align: middle; line-height: 1.3; font-size: 11px; color: #333;">-</td>
+   <td contenteditable="true" style="padding: 6px 4px; border: 1px solid #ccc; outline: none; transition: background 0.2s; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 11px; color: #333;" onfocus="this.style.backgroundColor='#fff'" onblur="this.style.backgroundColor='transparent'">${rDisplay}</td>
 </tr>`);
 });
 }
@@ -997,17 +1004,17 @@ for (let i = 0; i < allTrs.length; i += ROWS_PER_PAGE) {
 const chunk = allTrs.slice(i, i + ROWS_PER_PAGE);
 
 pagesHtml += `
-<div id="export-page-${pageIndex}" class="export-table-page" style="background: #ffffff; padding: 16px; margin-bottom: 24px; border-radius: 8px; border: 1px solid #e5e7eb; box-sizing: border-box;">
-  <div style="font-size: 13px; color: #6b7280; margin-bottom: 12px; text-align: right; font-family: sans-serif; font-weight: bold;">
+<div id="export-page-${pageIndex}" class="export-table-page" style="background: #ffffff; padding: 8px; margin-bottom: 16px; border-radius: 8px; border: 1px solid #e5e7eb; box-sizing: border-box;">
+  <div style="font-size: 11px; color: #6b7280; margin-bottom: 8px; text-align: right; font-family: sans-serif; font-weight: bold;">
      Page ${pageIndex} of ${Math.ceil(allTrs.length / ROWS_PER_PAGE)}
   </div>
-  <table style="font-family: Arial, sans-serif; border: 1px solid #333; table-layout: fixed; width: 100%; word-wrap: break-word; background-color: #ffffff; border-collapse: collapse;">
+  <table style="font-family: Arial, sans-serif; border: 1px solid #333; table-layout: fixed; width: 100%; word-break: break-word; hyphens: auto; background-color: #ffffff; border-collapse: collapse;">
   <thead>
   <tr style="background-color: #333; color: #fff;">
-   <th style="padding: 10px 8px; border: 1px solid #555; width: 28%; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Volunteer</th>
-   <th style="padding: 10px 8px; border: 1px solid #555; width: 28%; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Trainee(s)</th>
-   <th style="padding: 10px 8px; border: 1px solid #555; width: 12%; vertical-align: middle; text-align: center; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Grp</th>
-   <th style="padding: 10px 8px; border: 1px solid #555; width: 32%; vertical-align: middle; text-align: left; line-height: 1.4; font-size: 14px; font-weight: bold; color: #fff;">Remarks</th>
+   <th style="padding: 6px 4px; border: 1px solid #555; width: 27%; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 12px; font-weight: bold; color: #fff;">Volunteer</th>
+   <th style="padding: 6px 4px; border: 1px solid #555; width: 26%; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 12px; font-weight: bold; color: #fff;">Trainee(s)</th>
+   <th style="padding: 6px 4px; border: 1px solid #555; width: 11%; vertical-align: middle; text-align: center; line-height: 1.3; font-size: 12px; font-weight: bold; color: #fff;">Grp</th>
+   <th style="padding: 6px 4px; border: 1px solid #555; width: 36%; vertical-align: middle; text-align: left; line-height: 1.3; font-size: 12px; font-weight: bold; color: #fff;">Remarks</th>
   </tr>
   </thead>
   <tbody>
@@ -1051,18 +1058,18 @@ for (let i = 0; i < pages.length; i++) {
    const pageId = pageEl.id;
    
    const canvas = await html2canvas(pageEl, {
-       scale: 3, // 600px width * 3 = 1800px output. High-res while respecting 600px desktop format.
+       scale: 3, // 500px width * 3 = 1500px output. High-res while respecting 500px desktop format.
        backgroundColor: '#ffffff',
        useCORS: true,
        logging: false,
-       windowWidth: 600,
+       windowWidth: 500,
        onclone: (clonedDoc) => {
            const clonedPage = clonedDoc.getElementById(pageId);
            if (clonedPage) {
-               clonedPage.style.width = '600px';
-               clonedPage.style.minWidth = '600px';
-               clonedPage.style.maxWidth = '600px';
-               // Prevent parent containers from clipping the 600px forced layout
+               clonedPage.style.width = '500px';
+               clonedPage.style.minWidth = '500px';
+               clonedPage.style.maxWidth = '500px';
+               // Prevent parent containers from clipping the 500px forced layout
                let p = clonedPage.parentElement;
                while(p && p.tagName !== 'HTML') {
                    p.style.overflow = 'visible';
