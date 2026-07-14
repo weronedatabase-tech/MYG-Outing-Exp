@@ -999,6 +999,7 @@ newNode.style.transform = 'translateY(0)';
 updateCommAttCountsDOM();
 rebindCommAttCard(cardId, p);
 
+scrollCardIntoViewLocally(newNode);
 applyCardPulse(newNode, isChecked ? 'pulse-green' : (isGoneHome ? 'pulse-blue' : 'pulse-red'));
 }, 300);
 }
@@ -1782,6 +1783,8 @@ newNode.style.opacity = '1';
 newNode.style.transform = 'translateY(0)';
 updateBusCountsDOM();
 rebindCommAttCard(cardId, p);
+
+scrollCardIntoViewLocally(newNode);
 applyCardPulse(newNode, isBoarded ? 'pulse-green' : 'pulse-red');
 }, 300);
 }
