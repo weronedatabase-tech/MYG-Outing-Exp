@@ -552,6 +552,17 @@ showOverlay('error', res.message);
 
 // === LIVE ATTENDANCE LOGIC ===
 
+function scrollCardIntoViewLocally(cardNode) {
+if (!cardNode) return;
+const container = cardNode.parentElement;
+if (container) {
+const containerRect = container.getBoundingClientRect();
+const cardRect = cardNode.getBoundingClientRect();
+const scrollTop = container.scrollTop + (cardRect.top - containerRect.top) - (containerRect.height / 2) + (cardRect.height / 2);
+container.scrollTo({ top: scrollTop, behavior: 'smooth' });
+}
+}
+
 function loadCommAttendanceData() {
 const overlay = document.getElementById('commAttLoadingOverlay');
 overlay.classList.remove('hidden');
@@ -1107,7 +1118,7 @@ renderCommAttLists();
 setTimeout(() => {
     const cardNode = document.getElementById(`comm-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
     if (cardNode) {
-        cardNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        scrollCardIntoViewLocally(cardNode);
         applyCardPulse(cardNode, forceState ? 'pulse-green' : 'pulse-red');
     }
 }, 50);
@@ -1136,7 +1147,7 @@ renderCommAttLists();
 setTimeout(() => {
     const cardNode = document.getElementById(`comm-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
     if (cardNode) {
-        cardNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        scrollCardIntoViewLocally(cardNode);
         applyCardPulse(cardNode, forceState ? 'pulse-blue' : 'pulse-red');
     }
 }, 50);
@@ -1848,7 +1859,7 @@ renderBusLists();
 setTimeout(() => {
     const cardNode = document.getElementById(`bus-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
     if (cardNode) {
-        cardNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        scrollCardIntoViewLocally(cardNode);
         applyCardPulse(cardNode, forceBoarded ? 'pulse-green' : 'pulse-red');
     }
 }, 50);
