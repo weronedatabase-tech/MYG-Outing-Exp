@@ -1104,6 +1104,13 @@ commAttState.searchQuery = "";
 document.getElementById('commAttSearchInput').value = "";
 if (typeof toggleClearBtn === 'function') toggleClearBtn('commAttSearchInput');
 renderCommAttLists();
+setTimeout(() => {
+    const cardNode = document.getElementById(`comm-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
+    if (cardNode) {
+        cardNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        applyCardPulse(cardNode, forceState ? 'pulse-green' : 'pulse-red');
+    }
+}, 50);
 } else {
 updateCommAttCardDOM(name);
 }
@@ -1126,6 +1133,13 @@ commAttState.searchQuery = "";
 document.getElementById('commAttSearchInput').value = "";
 if (typeof toggleClearBtn === 'function') toggleClearBtn('commAttSearchInput');
 renderCommAttLists();
+setTimeout(() => {
+    const cardNode = document.getElementById(`comm-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
+    if (cardNode) {
+        cardNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        applyCardPulse(cardNode, forceState ? 'pulse-blue' : 'pulse-red');
+    }
+}, 50);
 } else {
 updateCommAttCardDOM(name);
 }
@@ -1831,6 +1845,13 @@ busState.searchQuery = "";
 document.getElementById('busSearchInput').value = "";
 if (typeof toggleClearBtn === 'function') toggleClearBtn('busSearchInput');
 renderBusLists();
+setTimeout(() => {
+    const cardNode = document.getElementById(`bus-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
+    if (cardNode) {
+        cardNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        applyCardPulse(cardNode, forceBoarded ? 'pulse-green' : 'pulse-red');
+    }
+}, 50);
 } else {
 updateBusCardDOM(name);
 }
