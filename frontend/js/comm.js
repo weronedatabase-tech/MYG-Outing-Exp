@@ -951,6 +951,7 @@ if (isGoneHome) targetListId = 'commAttGoneHomeList';
 else if (isChecked) targetListId = 'commAttCheckedList';
 
 const targetList = document.getElementById(targetListId);
+let pulseClass = isGoneHome ? 'pulse-blue' : (isChecked ? 'pulse-green' : 'pulse-red');
 
 if (existingCard) {
 const currentListId = existingCard.parentElement.id;
@@ -958,9 +959,8 @@ if (currentListId === targetListId) {
 existingCard.outerHTML = newHtml;
 rebindCommAttCard(cardId, p);
 
-// Pulse
 const newNode = document.getElementById(cardId);
-if (newNode) applyCardPulse(newNode, isChecked ? 'pulse-green' : (isGoneHome ? 'pulse-blue' : 'pulse-red'));
+if (newNode) applyCardPulse(newNode, pulseClass);
 } else {
 // Smoothly collapse
 existingCard.style.overflow = 'hidden';
@@ -1000,7 +1000,9 @@ updateCommAttCountsDOM();
 rebindCommAttCard(cardId, p);
 
 scrollCardIntoViewLocally(newNode);
-applyCardPulse(newNode, isChecked ? 'pulse-green' : (isGoneHome ? 'pulse-blue' : 'pulse-red'));
+setTimeout(() => {
+    applyCardPulse(newNode, pulseClass);
+}, 400); // Trigger pulse exactly when smooth scroll lands
 }, 300);
 }
 }
@@ -1120,7 +1122,9 @@ setTimeout(() => {
     const cardNode = document.getElementById(`comm-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
     if (cardNode) {
         scrollCardIntoViewLocally(cardNode);
-        applyCardPulse(cardNode, forceState ? 'pulse-green' : 'pulse-red');
+        const isGoneHome = commAttData.attendance['__GONE_HOME__'] && commAttData.attendance['__GONE_HOME__'][name] === true;
+        const pulseClass = isGoneHome ? 'pulse-blue' : (forceState ? 'pulse-green' : 'pulse-red');
+        setTimeout(() => applyCardPulse(cardNode, pulseClass), 400);
     }
 }, 50);
 } else {
@@ -1149,7 +1153,9 @@ setTimeout(() => {
     const cardNode = document.getElementById(`comm-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
     if (cardNode) {
         scrollCardIntoViewLocally(cardNode);
-        applyCardPulse(cardNode, forceState ? 'pulse-blue' : 'pulse-red');
+        const isChecked = juncture && commAttData.attendance[juncture] ? commAttData.attendance[juncture][name] === true : false;
+        const pulseClass = forceState ? 'pulse-blue' : (isChecked ? 'pulse-green' : 'pulse-red');
+        setTimeout(() => applyCardPulse(cardNode, pulseClass), 400);
     }
 }, 50);
 } else {
@@ -1785,7 +1791,9 @@ updateBusCountsDOM();
 rebindCommAttCard(cardId, p);
 
 scrollCardIntoViewLocally(newNode);
-applyCardPulse(newNode, isBoarded ? 'pulse-green' : 'pulse-red');
+setTimeout(() => {
+    applyCardPulse(newNode, isBoarded ? 'pulse-green' : 'pulse-red');
+}, 400);
 }, 300);
 }
 }
@@ -1863,7 +1871,9 @@ setTimeout(() => {
     const cardNode = document.getElementById(`bus-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
     if (cardNode) {
         scrollCardIntoViewLocally(cardNode);
-        applyCardPulse(cardNode, forceBoarded ? 'pulse-green' : 'pulse-red');
+        setTimeout(() => {
+            applyCardPulse(cardNode, forceBoarded ? 'pulse-green' : 'pulse-red');
+        }, 400);
     }
 }, 50);
 } else {
