@@ -47,11 +47,24 @@ if (!commAttData.attendance['Meeting']) commAttData.attendance['Meeting'] = {};
 if (!commAttData.attendance['__GONE_HOME__']) commAttData.attendance['__GONE_HOME__'] = {};
 
 // Ensure bus attendance structures exist for tracked bus junctures
+// and safely migrate any legacy exact-name matches to composite keys
 commAttData.busJunctures.forEach(bj => {
 let prefix = bj.type === 'meet' ? 'Meeting: ' : 'Dismissal: ';
 let compositeName = prefix + bj.name;
+
+if (commAttData.busAttendance[bj.name] && !commAttData.busAttendance[compositeName]) {
+    commAttData.busAttendance[compositeName] = Object.assign({}, commAttData.busAttendance[bj.name]);
+}
+
 if (!commAttData.busAttendance[compositeName]) {
-commAttData.busAttendance[compositeName] = {};
+    commAttData.busAttendance[compositeName] = {};
+}
+});
+
+// Remove the legacy keys to prevent duplicate entries in the UI dropdown
+commAttData.busJunctures.forEach(bj => {
+if (commAttData.busAttendance[bj.name]) {
+    delete commAttData.busAttendance[bj.name];
 }
 });
 }
