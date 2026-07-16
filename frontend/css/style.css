@@ -39,10 +39,27 @@ body {
 -webkit-tap-highlight-color: transparent; 
 }
 
-/* Prevent text selection on all buttons globally */
-button, [role="button"] {
--webkit-user-select: none;
-user-select: none;
+/* Prevent text selection, tap highlights, and iOS callouts on ALL interactive elements */
+button, 
+a, 
+select, 
+[role="button"], 
+[onclick], 
+.cursor-pointer,
+.comm-att-card,
+.bus-att-card,
+.grouping-card,
+.dnd-draggable {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Explicitly allow selection in inputs and textareas */
+input, textarea {
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
 }
 
 /* Perfected Red 'X' Pill Overlay */
