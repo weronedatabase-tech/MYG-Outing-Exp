@@ -13,13 +13,34 @@ return config[ENV];
 }
 
 function getTemplateFolderId() {
-const parentId = getParentFolderId();
-const parentFolder = DriveApp.getFolderById(parentId);
-const folders = parentFolder.getFoldersByName("01. Template Files");
-if (folders.hasNext()) {
-return folders.next().getId();
+  const cache = CacheService.getScriptCache();
+  const cachedId = cache.get("TEMPLATE_FOLDER_ID_" + ENV);
+  if (cachedId) return cachedId;
+
+  const parentId = getParentFolderId();
+  const parentFolder = DriveApp.getFolderById(parentId);
+  const folders = parentFolder.getFoldersByName("01. Template Files");
+  if (folders.hasNext()) {
+    const id = folders.next().getId();
+    cache.put("TEMPLATE_FOLDER_ID_" + ENV, id, 21600);
+    return id;
+  }
+  throw new Error("Template folder '01. Template Files' not found in the parent directory.");
 }
-throw new Error("Template folder '01. Template Files' not found in the parent directory.");
+
+function getTemplateFileId() {
+  const cache = CacheService.getScriptCache();
+  const cachedFileId = cache.get("TEMPLATE_FILE_ID_" + ENV);
+  if (cachedFileId) return cachedFileId;
+
+  const templateFolder = DriveApp.getFolderById(getTemplateFolderId());
+  const tFiles = templateFolder.getFilesByType(MimeType.GOOGLE_SHEETS);
+  if (tFiles.hasNext()) {
+    const id = tFiles.next().getId();
+    cache.put("TEMPLATE_FILE_ID_" + ENV, id, 21600);
+    return id;
+  }
+  throw new Error("Template file not found.");
 }
 
 // --- ACTIVE CONSTANTS ---
@@ -1762,8 +1783,13 @@ activeVolunteers: activeVolunteers
 
 if (!name) return { success: false, message: "No name provided to search." };
 
-const textFinder = sheet.getRange("A:A").createTextFinder(name).matchEntireCell(true);
-const cell = textFinder.findNext();
+const nameClean = name.toString().trim();
+const textFinder = sheet.getRange("A:A").createTextFinder(nameClean).matchCase(false);
+let cell = textFinder.findNext();
+while (cell) {
+  if (cell.getValue().toString().trim().toLowerCase() === nameClean.toLowerCase()) break;
+  cell = textFinder.findNext();
+}
 
 if(!cell) {
 if (type === 'volunteer') {
@@ -2090,8 +2116,13 @@ const name = form.targetName || form.data['Name'] || form.data[Object.keys(form.
 
 if (!name) return { success: false, message: "No name selected to update." };
 
-const textFinder = sheet.getRange("A:A").createTextFinder(name).matchEntireCell(true);
-const cell = textFinder.findNext();
+const nameClean = name.toString().trim();
+const textFinder = sheet.getRange("A:A").createTextFinder(nameClean).matchCase(false);
+let cell = textFinder.findNext();
+while (cell) {
+  if (cell.getValue().toString().trim().toLowerCase() === nameClean.toLowerCase()) break;
+  cell = textFinder.findNext();
+}
 const rawHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 
 let targetRow;
@@ -2129,15 +2160,16 @@ sheet.getRange(insertRow, 1, 1, newRow.length).setValues([newRow]);
 
 // --- UPDATE TEMPLATE (Name AND Project) ---
 try {
-const templateFolder = DriveApp.getFolderById(getTemplateFolderId());
-const tFiles = templateFolder.getFilesByType(MimeType.GOOGLE_SHEETS);
-if (tFiles.hasNext()) {
-const tFile = tFiles.next();
-const tSS = SpreadsheetApp.open(tFile);
+const tSS = SpreadsheetApp.openById(getTemplateFileId());
+if (tSS) {
 const tSheet = tSS.getSheetByName("Volunteer Attendance");
-const tFinder = tSheet.getRange("A:A").createTextFinder(name).matchEntireCell(true);
-
-if (!tFinder.findNext()) {
+const tFinder = tSheet.getRange("A:A").createTextFinder(nameClean).matchCase(false);
+let tCell = tFinder.findNext();
+while (tCell) {
+  if (tCell.getValue().toString().trim().toLowerCase() === nameClean.toLowerCase()) break;
+  tCell = tFinder.findNext();
+}
+if (!tCell) {
 let tInsertRow = tSheet.getLastRow() + 1;
 if (tInsertRow < 2) tInsertRow = 2;
 
