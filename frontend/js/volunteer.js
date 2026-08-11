@@ -420,13 +420,14 @@ if(res.success) {
     } 
     
     fieldsToShow.forEach(header => { 
-        let val = isNew ? "" : (getValueFuzzy(data, header)); 
+        let rawVal = isNew ? "" : (getValueFuzzy(data, header)); 
+        let val = rawVal != null ? String(rawVal) : "";
         let cleanH = header.toLowerCase().replace(/[^a-z0-9]/g, ""); 
         let isNameField = cleanH.includes("name"); 
         if(isNew && cleanH.includes("project")) return; 
         let isReadOnly = isNameField && !isNew; 
         if(isNew && isNameField) val = ""; 
-        if(!isNew && isNameField) val = name; 
+        if(!isNew && isNameField) val = name || ""; 
         let inputHtml = ""; 
         let wrapperClass = "mb-1"; 
         if (!isNameField && !cleanH.includes("attending")) { wrapperClass += " attendance-dependent"; } 

@@ -1785,6 +1785,7 @@ else if (normH.includes("caregiver")) key = "caregiver";
 if(key) {
 let val = rowData[i];
 if (val instanceof Date) val = Utilities.formatDate(val, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd");
+else if (val != null && val !== "") val = String(val);
 record[key] = val;
 }
 });
