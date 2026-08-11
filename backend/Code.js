@@ -538,7 +538,7 @@ return { success: false, message: "Error: " + e.toString() };
 function updateOuting(payload) {
 const lock = LockService.getScriptLock();
 try {
-lock.waitLock(15000);
+lock.waitLock(28000);
 const { sheetUrl, form } = payload;
 const rawDate = new Date(form.eventDate);
 const yyyy = rawDate.getFullYear();
@@ -626,7 +626,7 @@ try { return JSON.parse(cached); } catch(e) {}
 
 const lock = LockService.getScriptLock();
 try {
-if (!skipLock) lock.waitLock(15000);
+if (!skipLock) lock.waitLock(28000);
 if (!forceRebuild) {
 let cached = getLargeCache(cacheKey);
 if (cached) { try { return JSON.parse(cached); } catch(e) {} }
@@ -825,7 +825,7 @@ if (cached) { try { return JSON.parse(cached); } catch(e) {} }
 
 const lock = LockService.getScriptLock();
 try {
-if (!skipLock) lock.waitLock(15000);
+if (!skipLock) lock.waitLock(28000);
 if (!forceRebuild) {
 let cached = getLargeCache(cacheKey);
 if (cached) { try { return JSON.parse(cached); } catch(e) {} }
@@ -925,7 +925,7 @@ if (!skipLock) lock.releaseLock();
 function syncManualPairingUpdates(sheetUrl, updates) {
 const lock = LockService.getScriptLock();
 try {
-lock.waitLock(15000);
+lock.waitLock(28000);
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
 let tSheet = ss.getSheetByName("Trainee Attendance");
 if (!tSheet) tSheet = ss.getSheetByName("Trainee Attendance ");
@@ -965,7 +965,7 @@ changed = true;
 if (changed) {
 let tOutput = tData.map((vals, i) => vals.map((v, c) => tFormulas[i][c] !== "" ? tFormulas[i][c] : v));
 tRange.setValues(tOutput);
-SpreadsheetApp.flush();
+// SpreadsheetApp.flush(); // Optimized out
 patchCachesOnPairingSync(sheetUrl, updates);
 }
 
@@ -980,7 +980,7 @@ lock.releaseLock();
 function syncManualGroupingUpdates(sheetUrl, updates) {
 const lock = LockService.getScriptLock();
 try {
-lock.waitLock(15000);
+lock.waitLock(28000);
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
 
 // --- Process Trainees ---
@@ -1091,7 +1091,7 @@ vRange.setValues(output);
 }
 }
 
-SpreadsheetApp.flush();
+// SpreadsheetApp.flush(); // Optimized out
 patchCachesOnGroupingSync(sheetUrl, updates);
 return { success: true };
 } catch(e) {
@@ -1107,7 +1107,7 @@ CORE LOGIC 1: MANUAL PAIRING BUTTON
 function runAutoPairing(sheetUrl) {
 const lock = LockService.getScriptLock();
 try {
-lock.waitLock(15000);
+lock.waitLock(28000);
 if (!sheetUrl) throw new Error("Invalid URL");
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
 let tSheet = ss.getSheetByName("Trainee Attendance");
@@ -1178,7 +1178,7 @@ volPairedValues[k][0] = assignmentInfo.secondary;
 }
 
 volPairedRange.setValues(volPairedValues);
-SpreadsheetApp.flush(); 
+// SpreadsheetApp.flush(); // Optimized out 
 }
 }
 atomicCacheRebuild(sheetUrl, ss);
@@ -1196,7 +1196,7 @@ CORE LOGIC 2: MANUAL GROUPING BUTTON
 function runAutoGrouping(sheetUrl) {
 const lock = LockService.getScriptLock();
 try {
-lock.waitLock(15000);
+lock.waitLock(28000);
 if (!sheetUrl) throw new Error("Invalid URL");
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
 let tSheet = ss.getSheetByName("Trainee Attendance");
@@ -1282,7 +1282,7 @@ tFormulas[k][tGroupIdx] = "";
 
 let output = tValues.map((vals, i) => vals.map((v, c) => tFormulas[i][c] !== "" ? tFormulas[i][c] : v));
 tRange.setValues(output);
-SpreadsheetApp.flush();
+// SpreadsheetApp.flush(); // Optimized out
 }
 }
 atomicCacheRebuild(sheetUrl, ss);
@@ -1309,7 +1309,7 @@ if (cached) { try { return JSON.parse(cached); } catch(e) {} }
 
 const lock = LockService.getScriptLock();
 try {
-if (!skipLock) lock.waitLock(15000);
+if (!skipLock) lock.waitLock(28000);
 if (!forceRebuild) {
 let cached = getLargeCache(cacheKey);
 if (cached) { try { return JSON.parse(cached); } catch(e) {} }
@@ -1370,7 +1370,7 @@ sheet.getRange(1, targetInsertCol).setValue("[Att] Meeting");
 if (lastRow > 1) {
   sheet.getRange(2, targetInsertCol, lastRow - 1).insertCheckboxes();
 }
-SpreadsheetApp.flush();
+// SpreadsheetApp.flush(); // Optimized out
 
 lastCol = targetInsertCol;
 headers = getSafeValues(sheet.getRange(1, 1, 1, lastCol))[0];
@@ -1452,7 +1452,7 @@ if (!skipLock) lock.releaseLock();
 function syncCommAttendance(sheetUrl, multipleUpdates) {
 const lock = LockService.getScriptLock();
 try {
-lock.waitLock(15000);
+lock.waitLock(28000);
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
 let sheet = ss.getSheetByName("Trainee Attendance") || ss.getSheetByName("Trainee Attendance ");
 if (!sheet) return { success: false, message: "Trainee Attendance tab not found." };
@@ -1494,7 +1494,7 @@ if (!isBus) {
 } else {
   sheet.getRange(2, newColIdx, lastRow - 1).clearDataValidations();
 }
-SpreadsheetApp.flush();
+// SpreadsheetApp.flush(); // Optimized out
 headers = getSafeValues(sheet.getRange(1, 1, 1, newColIdx))[0];
 lastCol = newColIdx;
 juncIdx = newColIdx - 1;
@@ -1524,7 +1524,7 @@ changedGlobal = true;
 }
 
 if (changedGlobal) {
-SpreadsheetApp.flush();
+// SpreadsheetApp.flush(); // Optimized out
 patchCachesOnCommSync(sheetUrl, multipleUpdates);
 }
 return { success: true };
@@ -1538,7 +1538,7 @@ lock.releaseLock();
 function addCommJuncture(sheetUrl, junctureName) {
 const lock = LockService.getScriptLock();
 try {
-lock.waitLock(15000);
+lock.waitLock(28000);
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
 let sheet = ss.getSheetByName("Trainee Attendance") || ss.getSheetByName("Trainee Attendance ");
 if (!sheet) return { success: false, message: "Trainee Attendance tab not found." };
@@ -1560,7 +1560,7 @@ sheet.getRange(1, newColIdx).setValue(targetHeader);
 if (lastRow > 1) {
 sheet.getRange(2, newColIdx, lastRow - 1).insertCheckboxes();
 }
-SpreadsheetApp.flush();
+// SpreadsheetApp.flush(); // Optimized out
 atomicCacheRebuild(sheetUrl, ss);
 
 return fetchCommAttendance(sheetUrl, true, true, ss);
@@ -1574,7 +1574,7 @@ lock.releaseLock();
 function deleteCommJuncture(sheetUrl, junctureName) {
 const lock = LockService.getScriptLock();
 try {
-lock.waitLock(15000);
+lock.waitLock(28000);
 if (junctureName === "Meeting") {
 return { success: false, message: "The default 'Meeting' juncture cannot be deleted." };
 }
@@ -1592,7 +1592,7 @@ const juncIdx = headers.indexOf(targetHeader);
 
 if (juncIdx > -1) {
 sheet.deleteColumn(juncIdx + 1);
-SpreadsheetApp.flush();
+// SpreadsheetApp.flush(); // Optimized out
 atomicCacheRebuild(sheetUrl, ss);
 return fetchCommAttendance(sheetUrl, true, true, ss);
 }
@@ -1658,7 +1658,7 @@ if (cached) { try { return JSON.parse(cached); } catch(e) {} }
 
 const lock = LockService.getScriptLock();
 try {
-if (!skipLock) lock.waitLock(15000);
+if (!skipLock) lock.waitLock(28000);
 if (!forceRebuild) {
 let cached = getLargeCache(cacheKey);
 if (cached) { try { return JSON.parse(cached); } catch(e) {} }
@@ -2060,11 +2060,11 @@ function submitAttendanceData(form) {
 const lock = LockService.getScriptLock();
 let res;
 try {
-lock.waitLock(15000);
+lock.waitLock(28000);
 res = _submitAttendanceDataInner(form);
 
 if (res && res.success && res.ss) {
-SpreadsheetApp.flush();
+// SpreadsheetApp.flush(); // Optimized out
 // Bypasses the 10-second full sheet read atomicCacheRebuild! 
 patchCachesOnAttendanceUpdate(form.sheetUrl, form.type, res.targetName, form.data);
 }
