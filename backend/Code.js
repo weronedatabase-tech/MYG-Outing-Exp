@@ -30,6 +30,18 @@ function doGet(e) {
 return ContentService.createTextOutput(`MINDS MYG API is Online (${ENV} Environment).`);
 }
 
+
+function getSafeValues(range) {
+  var tz = Session.getScriptTimeZone();
+  try { tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(); } catch(e){}
+  return range.getValues().map(function(row) {
+    return row.map(function(cell) {
+      if (cell instanceof Date) return Utilities.formatDate(cell, tz, "yyyy-MM-dd");
+      return cell != null ? String(cell) : "";
+    });
+  });
+}
+
 function doPost(e) {
 let request;
 try {
@@ -344,7 +356,7 @@ if (found) {
 const row = found.getRow() + 1;
 const col = found.getColumn();
 if (col <= maxCol) {
-  const vals = infoSheet.getRange(row, col, Math.min(10, maxRow - row + 1), Math.min(3, maxCol - col + 1)).getValues();
+  const vals = infoSheet.getRange(row, col, Math.min(10, maxRow - row + 1), Math.min(3, maxCol - col + 1)).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")));
   for(let r of vals) {
       const val = String(r[0]).trim();
       if(val === "" || (stopKeyword && val.toLowerCase().includes(stopKeyword.toLowerCase()))) break;
@@ -466,12 +478,12 @@ const lastRow = sheet.getLastRow();
 const lastCol = sheet.getLastColumn();
 if (lastRow < 2) return [];
 
-const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+const headers = getSafeValues(sheet.getRange(1, 1, 1, lastCol))[0];
 const projIdx = getColIndex(headers, "project");
 
 if (projIdx === -1) return [];
 
-const data = sheet.getRange(2, projIdx + 1, lastRow - 1, 1).getValues().flat();
+const data = getSafeValues(sheet.getRange(2, projIdx + 1, lastRow - 1, 1)).flat();
 const projects = [...new Set(data.filter(p => p && p.toString().trim() !== ""))];
 return projects.sort();
 } catch (e) {
@@ -662,7 +674,7 @@ if (found) {
     const maxRows = infoSheet.getLastRow() - row + 1;
     if (maxRows > 0 && col <= maxInfoCol) {
         const numColsToRead = Math.min(3, maxInfoCol - col + 1);
-        const vals = infoSheet.getRange(row, col, Math.min(10, maxRows), numColsToRead).getValues();
+        const vals = infoSheet.getRange(row, col, Math.min(10, maxRows), numColsToRead).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")));
         for(let r of vals) {
             const val = String(r[0]).trim();
             if(val === "" || (stopKeyword && val.toLowerCase().includes(stopKeyword.toLowerCase()))) break;
@@ -703,8 +715,8 @@ const initProj = (p) => { if(!stats[p]) stats[p] = { tY: 0, tTot: 0, cY: 0, vY: 
 
 const tLastRow = tSheetFinal.getLastRow();
 if(tLastRow > 1) {
-const tData = tSheetFinal.getRange(2, 1, tLastRow-1, tSheetFinal.getLastColumn()).getValues();
-const tHeaders = tSheetFinal.getRange(1, 1, 1, tSheetFinal.getLastColumn()).getValues()[0];
+const tData = tSheetFinal.getRange(2, 1, tLastRow-1, tSheetFinal.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")));
+const tHeaders = tSheetFinal.getRange(1, 1, 1, tSheetFinal.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const tAttIdx = getColIndex(tHeaders, "attending");
 const tProjIdx = getColIndex(tHeaders, "project");
 const tCareIdx = getColIndex(tHeaders, "caregiver");
@@ -730,8 +742,8 @@ pendingTrainees.push(name);
 
 const vLastRow = vSheet.getLastRow();
 if(vLastRow > 1) {
-const vData = vSheet.getRange(2, 1, vLastRow-1, vSheet.getLastColumn()).getValues();
-const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues()[0];
+const vData = vSheet.getRange(2, 1, vLastRow-1, vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")));
+const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const vAttIdx = getColIndex(vHeaders, "attending");
 const vProjIdx = getColIndex(vHeaders, "project");
 let vNameIdx = getColIndex(vHeaders, "name");
@@ -841,8 +853,8 @@ const trainees = []; const volunteers = [];
 
 const tLastRow = tSheet.getLastRow();
 if (tLastRow > 1) {
-const tData = tSheet.getRange(2, 1, tLastRow - 1, tSheet.getLastColumn()).getValues();
-const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
+const tData = tSheet.getRange(2, 1, tLastRow - 1, tSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")));
+const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const tNameIdx = getColIndex(tHeaders, "name") > -1 ? getColIndex(tHeaders, "name") : 0;
 const tAttIdx = getColIndex(tHeaders, "attending");
 const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
@@ -873,8 +885,8 @@ tData.forEach(row => {
 
 const vLastRow = vSheet.getLastRow();
 if (vLastRow > 1) {
-const vData = vSheet.getRange(2, 1, vLastRow - 1, vSheet.getLastColumn()).getValues();
-const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues()[0];
+const vData = vSheet.getRange(2, 1, vLastRow - 1, vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")));
+const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const vNameIdx = getColIndex(vHeaders, "name") > -1 ? getColIndex(vHeaders, "name") : 0;
 const vAttIdx = getColIndex(vHeaders, "attending");
 const vProjIdx = getColIndex(vHeaders, "project");
@@ -922,14 +934,14 @@ if (!tSheet) return { success: false, message: "Missing Trainee Attendance Tab" 
 const tLastRow = tSheet.getLastRow();
 if (tLastRow < 2) return { success: true };
 
-const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
+const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const tNameIdx = getColIndex(tHeaders, "name") > -1 ? getColIndex(tHeaders, "name") : 0;
 const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
 
 if (tVolPairedIdx === -1) return { success: false, message: "Missing 'Vol Paired' column" };
 
 const tRange = tSheet.getRange(2, 1, tLastRow - 1, tSheet.getLastColumn());
-const tData = tRange.getValues();
+const tData = getSafeValues(tRange);
 const tFormulas = tRange.getFormulas();
 
 const updatesMap = {};
@@ -979,7 +991,7 @@ if (!tSheet) tSheet = ss.getSheetByName("Trainee Attendance ");
 if (tSheet) {
 const tLastRow = tSheet.getLastRow();
 if (tLastRow >= 2) {
-const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
+const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const tNameIdx = getColIndex(tHeaders, "name") > -1 ? getColIndex(tHeaders, "name") : 0;
 let tGroupIdx = getColIndex(tHeaders, "outing grouping");
 
@@ -989,7 +1001,7 @@ tSheet.getRange(1, tGroupIdx + 1).setValue("Outing Grouping");
 }
 
 const tRange = tSheet.getRange(2, 1, tLastRow - 1, Math.max(tSheet.getLastColumn(), tGroupIdx + 1));
-const tData = tRange.getValues();
+const tData = getSafeValues(tRange);
 const tFormulas = tRange.getFormulas();
 
 const tUpdatesMap = {};
@@ -1024,7 +1036,7 @@ const vSheet = ss.getSheetByName("Volunteer Attendance");
 if (vSheet) {
 const vLastRow = vSheet.getLastRow();
 if (vLastRow >= 2) {
-const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues()[0];
+const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const vNameIdx = getColIndex(vHeaders, "name") > -1 ? getColIndex(vHeaders, "name") : 0;
 let vGroupICIdx = getColIndex(vHeaders, "group ic");
 let vMeetICIdx = getColIndex(vHeaders, "meeting ic");
@@ -1041,7 +1053,7 @@ vSheet.insertColumnsAfter(vSheet.getMaxColumns(), maxColNeeded - vSheet.getMaxCo
 }
 
 const vRange = vSheet.getRange(2, 1, vLastRow - 1, maxColNeeded);
-const vData = vRange.getValues();
+const vData = getSafeValues(vRange);
 const vFormulas = vRange.getFormulas();
 
 const vUpdatesMap = {};
@@ -1108,10 +1120,10 @@ if (!tSheet || !vSheet || !mSheet) return { success: false, message: "Missing Ta
 const vLastRow = vSheet.getLastRow();
 const vActive = new Set();
 if (vLastRow > 1) {
-const vHeaders = vSheet.getRange(1,1,1,vSheet.getLastColumn()).getValues()[0];
+const vHeaders = vSheet.getRange(1,1,1,vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const vAttIdx = getColIndex(vHeaders, "attending");
 const vNameIdx = getColIndex(vHeaders, "name") > -1 ? getColIndex(vHeaders, "name") : 0;
-const vData = vSheet.getRange(2,1,vLastRow-1,vSheet.getLastColumn()).getValues();
+const vData = vSheet.getRange(2,1,vLastRow-1,vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")));
 for(let r of vData) {
 if(r[vAttIdx] && r[vAttIdx].toString().toLowerCase() === 'y') {
 if(r[vNameIdx]) vActive.add(r[vNameIdx].toString().toLowerCase());
@@ -1121,11 +1133,11 @@ if(r[vNameIdx]) vActive.add(r[vNameIdx].toString().toLowerCase());
 
 // 2. Get Mapping (Primary & Fallback)
 const priVolMap = new Map();
-const mHeaders = mSheet.getRange(1,1,1,mSheet.getLastColumn()).getValues()[0];
+const mHeaders = mSheet.getRange(1,1,1,mSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const mPairIdx = getColIndex(mHeaders, "outing pairing");
 const mVolIdx = getColIndex(mHeaders, "vol"); // Fallback column
 
-const mData = mSheet.getDataRange().getValues();
+const mData = getSafeValues(mSheet.getDataRange());
 for(let j=1; j<mData.length; j++){
 const name = mData[j][0] ? mData[j][0].toString().toLowerCase().trim() : "";
 if(name) {
@@ -1139,15 +1151,15 @@ priVolMap.set(name, { primary: primary, secondary: secondary });
 // 3. Populate Trainee Vol Paired (Single Column Write)
 const tLastRow = tSheet.getLastRow();
 if (tLastRow > 1) {
-const tHeaders = tSheet.getRange(1,1,1,tSheet.getLastColumn()).getValues()[0];
+const tHeaders = tSheet.getRange(1,1,1,tSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const tNameIdx = 0;
 const tAttIdx = getColIndex(tHeaders, "attending");
 const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
 
 if (tVolPairedIdx > -1) {
-const tFullData = tSheet.getRange(2, 1, tLastRow - 1, tSheet.getLastColumn()).getValues();
+const tFullData = tSheet.getRange(2, 1, tLastRow - 1, tSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")));
 const volPairedRange = tSheet.getRange(2, tVolPairedIdx + 1, tLastRow - 1, 1);
-let volPairedValues = volPairedRange.getValues();
+let volPairedValues = getSafeValues(volPairedRange);
 
 for(let k=0; k<tFullData.length; k++){
 const tName = tFullData[k][tNameIdx] ? tFullData[k][tNameIdx].toString().toLowerCase().trim() : "";
@@ -1193,9 +1205,9 @@ const mSheet = ss.getSheetByName("MISC PriVol");
 if (!tSheet || !mSheet) return { success: false, message: "Missing Tabs" };
 
 const groupMap = new Map();
-const mHeaders = mSheet.getRange(1,1,1,mSheet.getLastColumn()).getValues()[0];
+const mHeaders = mSheet.getRange(1,1,1,mSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const mGroupIdx = getColIndex(mHeaders, "group");
-const mData = mSheet.getDataRange().getValues();
+const mData = getSafeValues(mSheet.getDataRange());
 for(let j=1; j<mData.length; j++){
 if(mData[j][0] && mGroupIdx > -1) {
 groupMap.set(mData[j][0].toString().toLowerCase().trim(), mData[j][mGroupIdx]);
@@ -1205,10 +1217,10 @@ groupMap.set(mData[j][0].toString().toLowerCase().trim(), mData[j][mGroupIdx]);
 const tLastRow = tSheet.getLastRow();
 if (tLastRow > 1) {
 const tRange = tSheet.getRange(2,1,tLastRow-1,tSheet.getLastColumn());
-let tValues = tRange.getValues();
+let tValues = getSafeValues(tRange);
 let tFormulas = tRange.getFormulas();
 
-const tHeaders = tSheet.getRange(1,1,1,tSheet.getLastColumn()).getValues()[0];
+const tHeaders = tSheet.getRange(1,1,1,tSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const tNameIdx = 0;
 const tAttIdx = getColIndex(tHeaders, "attending");
 const tGroupIdx = getColIndex(tHeaders, "outing grouping");
@@ -1322,7 +1334,7 @@ const lastRow = sheet.getLastRow();
 let lastCol = sheet.getLastColumn();
 if (lastRow < 2) return { success: true, participants: [], junctures: ["Meeting"], busJunctures: busJunctures, attendance: { 'Meeting': {}, '__GONE_HOME__': {} }, busAttendance: {}, meetingLocs: meetingLocs, dismissalLocs: dismissalLocs };
 
-let headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+let headers = getSafeValues(sheet.getRange(1, 1, 1, lastCol))[0];
 const cgIdx = getColIndex(headers, "caregiver");
 const volIdx = getColIndex(headers, "vol paired");
 const meetIdx = getColIndex(headers, "meeting location");
@@ -1361,7 +1373,7 @@ if (lastRow > 1) {
 SpreadsheetApp.flush();
 
 lastCol = targetInsertCol;
-headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+headers = getSafeValues(sheet.getRange(1, 1, 1, lastCol))[0];
 junctures = [];
 headers.forEach((h, i) => {
   const str = String(h);
@@ -1383,7 +1395,7 @@ junctures = ["Meeting", ...junctures.filter(j => j !== "Meeting")];
 }
 
 const extraDataMap = buildExtraDataMap(ss);
-const data = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, lastCol).getValues() : [];
+const data = lastRow > 1 ? getSafeValues(sheet.getRange(2, 1, lastRow - 1, lastCol)) : [];
 const participants = [];
 const attendance = { '__GONE_HOME__': {} };
 const busAttendance = {};
@@ -1450,12 +1462,12 @@ let lastCol = sheet.getLastColumn();
 
 if (lastRow < 2) return { success: true };
 
-let headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+let headers = getSafeValues(sheet.getRange(1, 1, 1, lastCol))[0];
 
 let nameIdx = getColIndex(headers, "name");
 if (nameIdx === -1) nameIdx = 0;
 
-const namesData = sheet.getRange(2, nameIdx + 1, lastRow - 1).getValues();
+const namesData = getSafeValues(sheet.getRange(2, nameIdx + 1, lastRow - 1));
 let changedGlobal = false;
 
 for (const [junctureName, updates] of Object.entries(multipleUpdates)) {
@@ -1483,13 +1495,13 @@ if (!isBus) {
   sheet.getRange(2, newColIdx, lastRow - 1).clearDataValidations();
 }
 SpreadsheetApp.flush();
-headers = sheet.getRange(1, 1, 1, newColIdx).getValues()[0];
+headers = getSafeValues(sheet.getRange(1, 1, 1, newColIdx))[0];
 lastCol = newColIdx;
 juncIdx = newColIdx - 1;
 }
 
 const juncRange = sheet.getRange(2, juncIdx + 1, lastRow - 1);
-const juncData = juncRange.getValues();
+const juncData = getSafeValues(juncRange);
 
 const updateMap = {};
 updates.forEach(u => updateMap[u.name.toLowerCase()] = u.status);
@@ -1535,7 +1547,7 @@ const lastRow = sheet.getLastRow();
 const lastCol = sheet.getLastColumn();
 if (lastRow < 1) return { success: false, message: "Sheet is empty." };
 
-const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+const headers = getSafeValues(sheet.getRange(1, 1, 1, lastCol))[0];
 const targetHeader = `[Att] ${junctureName.trim()}`;
 
 if (headers.includes(targetHeader)) {
@@ -1574,7 +1586,7 @@ const lastRow = sheet.getLastRow();
 const lastCol = sheet.getLastColumn();
 if (lastRow < 1) return { success: false, message: "Sheet is empty." };
 
-const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+const headers = getSafeValues(sheet.getRange(1, 1, 1, lastCol))[0];
 const targetHeader = `[Att] ${junctureName.trim()}`;
 const juncIdx = headers.indexOf(targetHeader);
 
@@ -1628,8 +1640,8 @@ let tSheet = ss.getSheetByName("Trainee Attendance");
 if (!tSheet) tSheet = ss.getSheetByName("Trainee Attendance ");
 const vSheet = ss.getSheetByName("Volunteer Attendance");
 if(!tSheet || !vSheet) throw new Error("Template missing required tabs.");
-const tRaw = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
-const vRaw = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues()[0];
+const tRaw = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
+const vRaw = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const tHeaders = tRaw.map(h => cleanHeader(h)).filter(h => h !== "");
 const vHeaders = vRaw.map(h => cleanHeader(h)).filter(h => h !== "");
 return { success: true, tHeaders: tHeaders, vHeaders: vHeaders };
@@ -1660,7 +1672,7 @@ if(!sheet && type === 'trainee') sheet = ss.getSheetByName("Trainee Attendance "
 if(!sheet) throw new Error(tabName + " not found.");
 const lastRow = sheet.getLastRow();
 if (lastRow < 2) return { success: true, names: [] };
-const names = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
+const names = getSafeValues(sheet.getRange(2, 1, lastRow - 1, 1)).flat();
 const cleanNames = names.filter(n => n !== "");
 
 const result = { success: true, names: cleanNames };
@@ -1707,12 +1719,12 @@ const vSheet = ss.getSheetByName("Volunteer Attendance");
 if (vSheet) {
 const vLastRow = vSheet.getLastRow();
 if (vLastRow > 1) {
-const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues()[0];
+const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 let vAttIdx = getColIndex(vHeaders, "attend");
 let vNameIdx = getColIndex(vHeaders, "name");
 if (vNameIdx === -1) vNameIdx = 0;
 if (vAttIdx > -1) {
-const vData = vSheet.getRange(2, 1, vLastRow - 1, vSheet.getLastColumn()).getValues();
+const vData = vSheet.getRange(2, 1, vLastRow - 1, vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")));
 activeVolunteers = vData
 .filter(r => r[vAttIdx] && r[vAttIdx].toString().trim().toLowerCase() === 'y' && r[vNameIdx])
 .map(r => r[vNameIdx].toString().trim());
@@ -1725,7 +1737,7 @@ console.log("Failed fetching active volunteers: " + err.toString());
 }
 
 const lastCol = sheet.getLastColumn();
-const rawHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+const rawHeaders = getSafeValues(sheet.getRange(1, 1, 1, lastCol))[0];
 
 const settings = getAppSettings();
 let configCols = type === 'trainee' ? settings.traineeCols : settings.volCols;
@@ -1771,7 +1783,7 @@ return { success: false, message: "Name not found in Trainee list." };
 }
 
 const row = cell.getRow();
-const rowData = sheet.getRange(row, 1, 1, lastCol).getValues()[0];
+const rowData = getSafeValues(sheet.getRange(row, 1, 1, lastCol))[0];
 let record = {};
 
 rawHeaders.forEach((h, i) => {
@@ -2080,7 +2092,7 @@ if (!name) return { success: false, message: "No name selected to update." };
 
 const textFinder = sheet.getRange("A:A").createTextFinder(name).matchEntireCell(true);
 const cell = textFinder.findNext();
-const rawHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+const rawHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 
 let targetRow;
 let attendingStatus = '';
@@ -2132,7 +2144,7 @@ if (tInsertRow < 2) tInsertRow = 2;
 tSheet.getRange(tInsertRow, 1).setValue(name);
 
 if(projectVal) {
-const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
+const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const tProjIdx = getColIndex(tHeaders, "project");
 if (tProjIdx > -1) {
 tSheet.getRange(tInsertRow, tProjIdx + 1).setValue(projectVal);
@@ -2169,7 +2181,7 @@ if (insertRow < 2) insertRow = 2; // Prevent overwriting headers
 sheet.getRange(insertRow, 1, 1, newRow.length).setValues([newRow]);
 
 // Inject checkboxes for dynamic columns
-const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 currentHeaders.forEach((h, i) => {
 const str = String(h);
 if (str.startsWith("[Att] ") || str === "[Sys] Gone Home") {
@@ -2183,7 +2195,7 @@ targetRow = insertRow;
 // Existing Row Logic - BATCHED UPDATE
 targetRow = cell.getRow();
 const rowRange = sheet.getRange(targetRow, 1, 1, rawHeaders.length);
-const rowData = rowRange.getValues()[0];
+const rowData = getSafeValues(rowRange)[0];
 let hasChanges = false;
 
 for (const [cleanKey, value] of Object.entries(form.data)) {
@@ -2220,7 +2232,7 @@ rowRange.setValues([rowData]);
 // --- OPTIMIZED LOGICAL CASCADE (Unpairing) ---
 if (form.type === 'trainee') {
 if (attendingStatus === 'n') {
-const tHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+const tHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
 if (tVolPairedIdx > -1) {
 sheet.getRange(targetRow, tVolPairedIdx + 1).setValue("");
@@ -2233,7 +2245,7 @@ if (!tSheet) tSheet = ss.getSheetByName("Trainee Attendance ");
 if (tSheet) {
 const tLastRow = tSheet.getLastRow();
 if (tLastRow > 1) {
-const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues()[0];
+const tHeaders = tSheet.getRange(1, 1, 1, tSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 const tVolPairedIdx = getColIndex(tHeaders, "vol paired");
 if (tVolPairedIdx > -1) {
  // TextFinder speeds up full-column searches massively compared to getValues()
