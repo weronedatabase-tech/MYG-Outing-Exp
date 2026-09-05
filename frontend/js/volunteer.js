@@ -4,33 +4,44 @@ let originalVolData = {};
 
 // MPA Specific Loader for Volunteer App to prevent pulling the massive comm.js bundle
 function loadVolunteerEvents() {
-  const selector = document.getElementById('volSheetSelector');
+  const hiddenInput = document.getElementById('volSheetSelector');
   const spinner = document.getElementById('volSheetSpinner');
+  const nameEl = document.getElementById('volEventName');
+  const dateTextEl = document.getElementById('volEventDateText');
 
-  const renderData = (data) => {
+  const renderSelectedEvent = (data) => {
       currentSheetList = data;
-      if (selector) {
-          selector.innerHTML = '';
-          selector.disabled = false;
-          data.forEach(item => {
-              let opt = document.createElement('option');
-              opt.value = item.sheetUrl;
-              opt.text = item.displayName;
-              selector.appendChild(opt);
-          });
+      if (!data || data.length === 0) {
+          if (nameEl) nameEl.innerText = "No upcoming events";
+          if (dateTextEl) dateTextEl.innerText = "N/A";
+          if (hiddenInput) hiddenInput.value = "";
+          return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const urlParam = params.get('url');
+
+      let selectedItem = null;
+      if (urlParam) {
+          selectedItem = data.find(x => x.sheetUrl === urlParam);
+      }
+      if (!selectedItem && data.length > 0) {
+          const closestUrl = window.getClosestEventUrl ? window.getClosestEventUrl(data) : data[0].sheetUrl;
+          selectedItem = data.find(x => x.sheetUrl === closestUrl) || data[0];
+      }
+
+      if (selectedItem) {
+          const oldUrl = hiddenInput ? hiddenInput.value : "";
+          const newUrl = selectedItem.sheetUrl;
           
-          const params = new URLSearchParams(window.location.search);
-          const urlParam = params.get('url');
+          if (hiddenInput) hiddenInput.value = newUrl;
+          if (nameEl) nameEl.innerText = selectedItem.displayName || selectedItem.fullName || "Upcoming Event";
+          if (dateTextEl) dateTextEl.innerText = selectedItem.formattedDate || "N/A";
           
-          if (urlParam && data.find(x => x.sheetUrl === urlParam)) {
-              selector.value = urlParam;
-          } else if (data.length > 0) {
-              const closest = window.getClosestEventUrl ? window.getClosestEventUrl(data) : data[0].sheetUrl;
-              if (closest) selector.value = closest;
-              else selector.selectedIndex = 0;
+          if (oldUrl !== newUrl && typeof resetVolForm === 'function') {
+              resetVolForm();
           }
       }
-      if (typeof resetVolForm === 'function') resetVolForm();
   };
 
   const localDataStr = localStorage.getItem('myg_sheetList');
@@ -39,13 +50,12 @@ function loadVolunteerEvents() {
       try {
           const parsed = JSON.parse(localDataStr);
           if (parsed && parsed.length > 0) {
-              renderData(parsed);
-              if(spinner) spinner.classList.remove('hidden');
+              renderSelectedEvent(parsed);
+              if (spinner) spinner.classList.add('hidden');
               apiCall('getRecentOutingSheets', null).then(res => {
-                  if(spinner) spinner.classList.add('hidden');
-                  if (res.success && JSON.stringify(res.data) !== localDataStr) {
+                  if (res && res.success && JSON.stringify(res.data) !== localDataStr) {
                       localStorage.setItem('myg_sheetList', JSON.stringify(res.data));
-                      renderData(res.data);
+                      renderSelectedEvent(res.data);
                   }
               });
               return;
@@ -53,30 +63,17 @@ function loadVolunteerEvents() {
       } catch(e) {}
   }
 
-  if (selector) {
-      selector.innerHTML = '<option disabled selected>↻ Loading events...</option>';
-      selector.disabled = true;
-  }
-  if(spinner) spinner.classList.remove('hidden');
+  if (spinner) spinner.classList.remove('hidden');
 
   apiCall('getRecentOutingSheets', null).then(res => {
-      if(spinner) spinner.classList.add('hidden');
+      if (spinner) spinner.classList.add('hidden');
 
-      if (res.success) {
+      if (res && res.success && res.data) {
           localStorage.setItem('myg_sheetList', JSON.stringify(res.data));
-          if(res.data.length > 0) {
-              renderData(res.data);
-          } else {
-              if (selector) {
-                  selector.disabled = false;
-                  selector.innerHTML = '<option disabled selected>No upcoming events</option>';
-              }
-          }
+          renderSelectedEvent(res.data);
       } else {
-          if (selector) {
-              selector.disabled = false;
-              selector.innerHTML = `<option disabled selected>Error: ${res.message}</option>`;
-          }
+          if (nameEl) nameEl.innerText = "Error loading event";
+          if (dateTextEl) dateTextEl.innerText = (res && res.message) ? res.message : "Please refresh";
       }
   });
 }

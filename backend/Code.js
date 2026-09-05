@@ -217,7 +217,7 @@ function invalidateCaches(url) {
 if (!url) return;
 try {
 const cache = CacheService.getScriptCache();
-const types = ["pair", "comm", "stats", "names_trainee", "names_volunteer"];
+const types = ["pair", "comm", "stats", "names_trainee", "names_volunteer", "p_meta_trainee", "p_meta_volunteer"];
 let keysToRemove = [];
 types.forEach(type => {
 const baseKey = getCacheKey(type, url);
@@ -258,6 +258,7 @@ function precomputeRecentOutings() {
 const parentFolder = DriveApp.getFolderById(getParentFolderId());
 const subfolders = parentFolder.getFolders();
 const folderList = [];
+const folderObjMap = {};
 const regex = /(\d{8})/;
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -286,8 +287,10 @@ let mIndex = parseInt(dStr.substring(4, 6), 10) - 1;
 let d = parseInt(dStr.substring(6, 8), 10);
 let prettyDate = (mIndex >= 0 && mIndex < 12 && d > 0 && d <= 31) ? `${d} ${monthNames[mIndex]} ${y}` : dStr;
 
+let fId = folder.getId();
+folderObjMap[fId] = folder;
 folderList.push({
-id: folder.getId(),
+id: fId,
 fullName: name,
 displayName: cleanName || name,
 formattedDate: prettyDate,
@@ -304,7 +307,7 @@ const result = [];
 const limit = Math.min(folderList.length, 20);
 for (let i = 0; i < limit; i++) {
 let f = folderList[i];
-let folderObj = DriveApp.getFolderById(f.id);
+let folderObj = folderObjMap[f.id] || DriveApp.getFolderById(f.id);
 let files = folderObj.getFilesByType("application/vnd.google-apps.spreadsheet");
 if (files.hasNext()) {
 f.sheetUrl = files.next().getUrl();
@@ -313,7 +316,9 @@ result.push(f);
 }
 
 const finalResult = { success: true, data: result };
-CacheService.getScriptCache().put('CRON_OUTINGS_' + ENV, JSON.stringify(finalResult), 21600); // Max 6 hours
+const finalStr = JSON.stringify(finalResult);
+try { CacheService.getScriptCache().put('CRON_OUTINGS_' + ENV, finalStr, 21600); } catch(e) {}
+try { PropertiesService.getScriptProperties().setProperty('CRON_OUTINGS_' + ENV, finalStr); } catch(e) {}
 return finalResult;
 }
 
@@ -324,13 +329,25 @@ let cached = cache.get(cacheKey);
 if (cached) {
 try { return JSON.parse(cached); } catch(e) {}
 }
-// If CRON cache is missing, compute it synchronously
+// Permanent PropertiesService fallback to avoid sync 20s DriveApp re-computation on cache miss
+try {
+let propCached = PropertiesService.getScriptProperties().getProperty(cacheKey);
+if (propCached) {
+  try {
+    cache.put(cacheKey, propCached, 21600);
+    return JSON.parse(propCached);
+  } catch(e) {}
+}
+} catch(e) {}
+
+// If both CRON caches are missing, compute synchronously
 return precomputeRecentOutings();
 }
 
 function forceBackendRefresh(payload) {
 try {
 CacheService.getScriptCache().remove('CRON_OUTINGS_' + ENV);
+try { PropertiesService.getScriptProperties().deleteProperty('CRON_OUTINGS_' + ENV); } catch(e) {}
 precomputeRecentOutings(); // Rebuild global list immediately
 
 if (payload && payload.sheetUrl) {
@@ -1677,14 +1694,7 @@ let cached = getLargeCache(cacheKey);
 if (cached) { try { return JSON.parse(cached); } catch(e) {} }
 }
 
-const lock = LockService.getScriptLock();
 try {
-if (!skipLock) lock.waitLock(28000);
-if (!forceRebuild) {
-let cached = getLargeCache(cacheKey);
-if (cached) { try { return JSON.parse(cached); } catch(e) {} }
-}
-
 if (!sheetUrl || sheetUrl === "") return { success: false, message: "Invalid Sheet URL" };
 const ss = ssOpt || SpreadsheetApp.openByUrl(sheetUrl);
 const tabName = type === 'trainee' ? "Trainee Attendance" : "Volunteer Attendance";
@@ -1701,30 +1711,70 @@ putLargeCache(cacheKey, JSON.stringify(result));
 return result;
 } catch(e) { 
 return { success: false, message: e.toString() }; 
-} finally {
-if (!skipLock) lock.releaseLock();
 }
 }
 
 function getPersonData(sheetUrl, type, name) {
 try {
 if (!sheetUrl || sheetUrl === "") return { success: false, message: "Invalid Sheet URL" };
+
+const normName = name ? name.toString().trim() : "";
+const recKey = getCacheKey("p_rec_" + type + "_" + normName.toLowerCase(), sheetUrl);
+const metaKey = getCacheKey("p_meta_" + type, sheetUrl);
+
+// 1. Check if person record is cached
+let cachedRec = null;
+if (normName) {
+let strRec = getLargeCache(recKey);
+if (strRec) {
+  try { cachedRec = JSON.parse(strRec); } catch(e) {}
+}
+}
+
+// 2. Check if event metadata is cached
+let meta = null;
+let strMeta = getLargeCache(metaKey);
+if (strMeta) {
+try { meta = JSON.parse(strMeta); } catch(e) {}
+}
+
+// Fast path: Both person record (if name provided) and metadata are cached
+if (meta && (cachedRec || (!normName && type === 'volunteer'))) {
+if (!normName && type === 'volunteer') {
+  return {
+    success: true, isNew: true, data: {},
+    headers: meta.headers, config: meta.config,
+    meetingOpts: meta.meetingOpts, dismissalOpts: meta.dismissalOpts,
+    projectOpts: meta.projectOpts, activeVolunteers: meta.activeVolunteers
+  };
+}
+return {
+  success: true, isNew: false, data: cachedRec,
+  headers: meta.headers, config: meta.config,
+  meetingOpts: meta.meetingOpts, dismissalOpts: meta.dismissalOpts,
+  projectOpts: meta.projectOpts, activeVolunteers: meta.activeVolunteers
+};
+}
+
+// Slow path: Open spreadsheet and fetch missing metadata or record
 const ss = SpreadsheetApp.openByUrl(sheetUrl);
 const tabName = type === 'trainee' ? "Trainee Attendance" : "Volunteer Attendance";
 let sheet = ss.getSheetByName(tabName);
 if(!sheet && type === 'trainee') sheet = ss.getSheetByName("Trainee Attendance ");
+if(!sheet) throw new Error(tabName + " not found.");
 
+if (!meta) {
 const infoSheet = ss.getSheetByName("OutingInformation");
 let meetingLocations = [];
 let dismissalLocations = [];
 
 if (infoSheet) {
 try {
-const ext = extractLocations(infoSheet);
-meetingLocations = ext.meetLocs;
-dismissalLocations = ext.disLocs;
+  const ext = extractLocations(infoSheet);
+  meetingLocations = ext.meetLocs;
+  dismissalLocations = ext.disLocs;
 } catch (e) {
-console.log("getPersonData extraction err: " + e);
+  console.log("getPersonData extraction err: " + e);
 }
 }
 
@@ -1736,24 +1786,24 @@ projects = getProjectList(sheetUrl);
 let activeVolunteers = [];
 if (type === 'trainee') {
 try {
-const vSheet = ss.getSheetByName("Volunteer Attendance");
-if (vSheet) {
-const vLastRow = vSheet.getLastRow();
-if (vLastRow > 1) {
-const vHeaders = vSheet.getRange(1, 1, 1, vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
-let vAttIdx = getColIndex(vHeaders, "attend");
-let vNameIdx = getColIndex(vHeaders, "name");
-if (vNameIdx === -1) vNameIdx = 0;
-if (vAttIdx > -1) {
-const vData = vSheet.getRange(2, 1, vLastRow - 1, vSheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")));
-activeVolunteers = vData
-.filter(r => r[vAttIdx] && r[vAttIdx].toString().trim().toLowerCase() === 'y' && r[vNameIdx])
-.map(r => r[vNameIdx].toString().trim());
-}
-}
-}
+  const vSheet = ss.getSheetByName("Volunteer Attendance");
+  if (vSheet) {
+    const vLastRow = vSheet.getLastRow();
+    if (vLastRow > 1) {
+      const vHeaders = getSafeValues(vSheet.getRange(1, 1, 1, vSheet.getLastColumn()))[0];
+      let vAttIdx = getColIndex(vHeaders, "attend");
+      let vNameIdx = getColIndex(vHeaders, "name");
+      if (vNameIdx === -1) vNameIdx = 0;
+      if (vAttIdx > -1) {
+        const vData = getSafeValues(vSheet.getRange(2, 1, vLastRow - 1, vSheet.getLastColumn()));
+        activeVolunteers = vData
+          .filter(r => r[vAttIdx] && r[vAttIdx].toString().trim().toLowerCase() === 'y' && r[vNameIdx])
+          .map(r => r[vNameIdx].toString().trim());
+      }
+    }
+  }
 } catch (err) {
-console.log("Failed fetching active volunteers: " + err.toString());
+  console.log("Failed fetching active volunteers: " + err.toString());
 }
 }
 
@@ -1767,52 +1817,70 @@ const templateInfo = getTemplateHeaders();
 if (templateInfo.success) configCols = type === 'trainee' ? templateInfo.tHeaders : templateInfo.vHeaders;
 }
 
-if (!name && type === 'volunteer') {
+meta = {
+  headers: rawHeaders,
+  config: configCols,
+  meetingOpts: meetingLocations,
+  dismissalOpts: dismissalLocations,
+  projectOpts: projects,
+  activeVolunteers: activeVolunteers
+};
+
+putLargeCache(metaKey, JSON.stringify(meta));
+}
+
+if (!normName && type === 'volunteer') {
 return {
-success: true,
-isNew: true,
-data: {},
-headers: rawHeaders,
-config: configCols,
-meetingOpts: meetingLocations,
-dismissalOpts: dismissalLocations,
-projectOpts: projects,
-activeVolunteers: activeVolunteers
+success: true, isNew: true, data: {},
+headers: meta.headers, config: meta.config,
+meetingOpts: meta.meetingOpts, dismissalOpts: meta.dismissalOpts,
+projectOpts: meta.projectOpts, activeVolunteers: meta.activeVolunteers
 };
 }
 
-if (!name) return { success: false, message: "No name provided to search." };
+if (!normName) return { success: false, message: "No name provided to search." };
 
-const nameClean = name.toString().trim();
-const textFinder = sheet.getRange("A:A").createTextFinder(nameClean).matchCase(false);
-let cell = textFinder.findNext();
-while (cell) {
-  if (cell.getValue().toString().trim().toLowerCase() === nameClean.toLowerCase()) break;
-  cell = textFinder.findNext();
+const lastRow = sheet.getLastRow();
+if (lastRow < 2) {
+if (type === 'volunteer') {
+  return {
+    success: true, isNew: true, data: {},
+    headers: meta.headers, config: meta.config,
+    meetingOpts: meta.meetingOpts, dismissalOpts: meta.dismissalOpts,
+    projectOpts: meta.projectOpts, activeVolunteers: meta.activeVolunteers
+  };
+}
+return { success: false, message: "Name not found in Trainee list." };
 }
 
-if(!cell) {
+// Batched Column A lookup (1 RPC call instead of slow TextFinder loop)
+const colA = getSafeValues(sheet.getRange(1, 1, lastRow, 1)).map(r => r[0] ? String(r[0]).trim().toLowerCase() : "");
+const targetClean = normName.toLowerCase();
+let targetRow = -1;
+for (let r = 1; r < colA.length; r++) {
+if (colA[r] === targetClean) {
+  targetRow = r + 1;
+  break;
+}
+}
+
+if (targetRow === -1) {
 if (type === 'volunteer') {
 return {
-success: true,
-isNew: true,
-data: {},
-headers: rawHeaders,
-config: configCols,
-meetingOpts: meetingLocations,
-dismissalOpts: dismissalLocations,
-projectOpts: projects,
-activeVolunteers: activeVolunteers
+  success: true, isNew: true, data: {},
+  headers: meta.headers, config: meta.config,
+  meetingOpts: meta.meetingOpts, dismissalOpts: meta.dismissalOpts,
+  projectOpts: meta.projectOpts, activeVolunteers: meta.activeVolunteers
 };
 }
 return { success: false, message: "Name not found in Trainee list." };
 }
 
-const row = cell.getRow();
-const rowData = getSafeValues(sheet.getRange(row, 1, 1, lastCol))[0];
+const lastCol = sheet.getLastColumn();
+const rowData = getSafeValues(sheet.getRange(targetRow, 1, 1, lastCol))[0];
 let record = {};
 
-rawHeaders.forEach((h, i) => {
+meta.headers.forEach((h, i) => {
 let normH = normalizeHeader(h);
 let key = normH;
 if (normH.includes("meetinglocation")) key = "meetinglocation";
@@ -1828,12 +1896,13 @@ record[key] = val;
 }
 });
 
+putLargeCache(recKey, JSON.stringify(record));
+
 return {
 success: true, isNew: false, data: record,
-headers: rawHeaders, config: configCols,
-meetingOpts: meetingLocations, dismissalOpts: dismissalLocations,
-projectOpts: projects,
-activeVolunteers: activeVolunteers
+headers: meta.headers, config: meta.config,
+meetingOpts: meta.meetingOpts, dismissalOpts: meta.dismissalOpts,
+projectOpts: meta.projectOpts, activeVolunteers: meta.activeVolunteers
 };
 } catch(e) { return { success: false, message: e.toString() }; }
 }
@@ -1969,6 +2038,18 @@ try {
 const statsKey = getCacheKey("stats", sheetUrl);
 cache.remove(statsKey);
 cache.remove(statsKey + "_count");
+} catch(e) {}
+
+// 5. Invalidate Person Data Caches
+try {
+if (normName) {
+  const pRecKey = getCacheKey("p_rec_" + type.toLowerCase() + "_" + normName, sheetUrl);
+  cache.remove(pRecKey);
+  cache.remove(pRecKey + "_count");
+}
+const pMetaKey = getCacheKey("p_meta_" + type.toLowerCase(), sheetUrl);
+cache.remove(pMetaKey);
+cache.remove(pMetaKey + "_count");
 } catch(e) {}
 }
 
@@ -2117,11 +2198,17 @@ const name = form.targetName || form.data['Name'] || form.data[Object.keys(form.
 if (!name) return { success: false, message: "No name selected to update." };
 
 const nameClean = name.toString().trim();
-const textFinder = sheet.getRange("A:A").createTextFinder(nameClean).matchCase(false);
-let cell = textFinder.findNext();
-while (cell) {
-  if (cell.getValue().toString().trim().toLowerCase() === nameClean.toLowerCase()) break;
-  cell = textFinder.findNext();
+const nameCleanLower = nameClean.toLowerCase();
+const lastRow = sheet.getLastRow();
+let cell = null;
+if (lastRow >= 1) {
+  const colA = getSafeValues(sheet.getRange(1, 1, lastRow, 1)).map(r => r[0] ? String(r[0]).trim().toLowerCase() : "");
+  for (let r = 0; r < colA.length; r++) {
+    if (colA[r] === nameCleanLower) {
+      cell = sheet.getRange(r + 1, 1);
+      break;
+    }
+  }
 }
 const rawHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().map(row => row.map(cell => (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd") : (cell != null ? String(cell) : "")))[0];
 
@@ -2163,14 +2250,19 @@ try {
 const tSS = SpreadsheetApp.openById(getTemplateFileId());
 if (tSS) {
 const tSheet = tSS.getSheetByName("Volunteer Attendance");
-const tFinder = tSheet.getRange("A:A").createTextFinder(nameClean).matchCase(false);
-let tCell = tFinder.findNext();
-while (tCell) {
-  if (tCell.getValue().toString().trim().toLowerCase() === nameClean.toLowerCase()) break;
-  tCell = tFinder.findNext();
+const tLastRow = tSheet.getLastRow();
+let tCell = null;
+if (tLastRow >= 1) {
+  const tColA = getSafeValues(tSheet.getRange(1, 1, tLastRow, 1)).map(r => r[0] ? String(r[0]).trim().toLowerCase() : "");
+  for (let r = 0; r < tColA.length; r++) {
+    if (tColA[r] === nameCleanLower) {
+      tCell = tSheet.getRange(r + 1, 1);
+      break;
+    }
+  }
 }
 if (!tCell) {
-let tInsertRow = tSheet.getLastRow() + 1;
+let tInsertRow = tLastRow + 1;
 if (tInsertRow < 2) tInsertRow = 2;
 
 tSheet.getRange(tInsertRow, 1).setValue(name);

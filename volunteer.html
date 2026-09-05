@@ -63,12 +63,20 @@ theme: { extend: { colors: { primary: '#3b82f6' } } }
 <div class="lg:col-span-5 space-y-6">
 <div class="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
 <div class="relative">
-<label class="text-sm font-bold text-green-600 dark:text-green-400 uppercase flex items-center gap-2">1. Select Upcoming Event <span id="volSheetLoading" class="hidden"><i class="fa-solid fa-spinner fa-spin"></i></span></label>
-<div class="relative mt-1">
-  <select id="volSheetSelector" class="w-full mt-1 bg-gray-50 dark:bg-black border border-gray-300 dark:border-zinc-700 rounded-lg py-3 px-3 text-sm text-gray-900 dark:text-white focus:border-green-500 outline-none appearance-none shadow-sm" onchange="resetVolForm()"><option disabled selected>Loading...</option></select>
-  <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500 dark:text-gray-400"><i class="fa-solid fa-chevron-down"></i></div>
-  <div id="volSheetSpinner" class="absolute right-8 top-3 hidden pointer-events-none text-green-500"><i class="fa-solid fa-circle-notch fa-spin"></i></div>
+<label class="text-sm font-bold text-green-600 dark:text-green-400 uppercase flex items-center justify-between">1. Event <span id="volSheetSpinner" class="hidden text-green-500"><i class="fa-solid fa-circle-notch fa-spin text-xs"></i></span></label>
+<div class="mt-2 bg-gray-50 dark:bg-black/60 border border-gray-200 dark:border-zinc-800 rounded-xl p-3.5 shadow-sm flex items-start gap-3">
+  <div class="bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-base font-bold">
+    <i class="fa-solid fa-calendar-check"></i>
+  </div>
+  <div class="min-w-0 flex-1">
+    <div id="volEventName" class="text-sm md:text-base font-bold text-gray-900 dark:text-white truncate">Loading event...</div>
+    <div id="volEventDate" class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-0.5 font-medium">
+      <i class="fa-regular fa-calendar text-green-500"></i>
+      <span id="volEventDateText">---</span>
+    </div>
+  </div>
 </div>
+<input type="hidden" id="volSheetSelector" value="">
 </div>
 <div>
 <label class="text-sm font-bold text-green-600 dark:text-green-400 uppercase">2. Select Type</label>
