@@ -1,0 +1,6 @@
+{
+  "name": "MINDS MYG Outings Organiser",
+  "description": "An application to manage outings, volunteers, and attendance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
