@@ -7,6 +7,14 @@ window.navigateTo = function(page, params = {}) {
  window.location.href = url.toString();
 };
 
+window.handleNavBack = function() {
+    if (window.history.length > 1 && document.referrer.includes(window.location.host)) {
+        window.history.back();
+    } else {
+        window.location.href = './';
+    }
+};
+
 async function refreshApp() { 
  const icon = document.getElementById('refreshIcon'); 
  if(icon) icon.classList.add('fa-spin'); 

@@ -142,6 +142,8 @@ app.post('/api', async (req, res) => {
     } else {
         // Write Actions - queue them to avoid rate limiting
         console.log(`[QUEUE] Enqueueing write action: ${action}`);
+        // Flush all cache because a write might invalidate any read queries
+        cache.flushAll();
         try {
             const response = await writeQueue.add(async () => {
                 const gasResponse = await _fetch(config.GAS_BACKEND_URL, {
