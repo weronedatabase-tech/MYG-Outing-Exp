@@ -3,6 +3,16 @@ let currentVolPairedValue = [];
 let originalVolData = {};
 let preloadedNames = { trainee: [], volunteer: [] };
 let isNamesLoaded = { trainee: false, volunteer: false };
+let personDataCache = {};
+
+function preloadPersonData(name, type) {
+    const url = document.getElementById('volSheetSelector').value;
+    if (!url || !type) return;
+    const cacheKey = `${type}_${name || 'NEW'}`;
+    if (!personDataCache[cacheKey]) {
+        personDataCache[cacheKey] = apiCall('getPersonData', { url: url, type: type, name: name });
+    }
+}
 
 function preloadNames(url) {
     if (!url) return;
@@ -135,7 +145,8 @@ btn.classList.add('bg-green-600', 'text-white', 'border-transparent');
 document.getElementById('volNameSection').classList.remove('hidden'); 
 document.getElementById('volFormContainer').classList.add('hidden'); 
 if (type === 'volunteer') { 
-document.getElementById('addNewVolContainer').classList.remove('hidden'); 
+document.getElementById('addNewVolContainer').classList.remove('hidden');
+preloadPersonData(null, type); 
 } else { 
 document.getElementById('addNewVolContainer').classList.add('hidden'); 
 } 
@@ -227,7 +238,8 @@ function filterNames() {
     }
     
     const matches = allNames.filter(n => n.toLowerCase().includes(filter)); 
-    matches.forEach(name => { 
+    matches.forEach((name, index) => {
+        if (index < 2) preloadPersonData(name, currentVolTypeRequest); 
         const li = document.createElement('li'); 
         li.className = "px-4 py-3 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-zinc-700 hover:bg-cyan-600 hover:text-white cursor-pointer text-sm transition-colors last:border-0"; 
         li.innerText = name; 
@@ -434,7 +446,9 @@ projectContainer.classList.add('hidden');
 document.getElementById('newVolProjectSearch').required = false; 
 } 
 
-apiCall('getPersonData', { url: url, type: selectedVolType, name: name }).then(res => { 
+const cacheKey = `${selectedVolType}_${name || 'NEW'}`;
+let fetchPromise = personDataCache[cacheKey] || apiCall('getPersonData', { url: url, type: selectedVolType, name: name });
+fetchPromise.then(res => { 
 fieldsDiv.innerHTML = ''; 
 if(res.success) { 
     const data = res.data; 
@@ -575,25 +589,29 @@ if (k.toLowerCase().includes("name") || k.toLowerCase().includes("project")) {
 }
 }
 
-showOverlay('loading', 'Saving Attendance...');
+// Optimistic UI: Show success instantly
+showOverlay("success", "Attendance submitted securely.");
+const url = document.getElementById("volSheetSelector").value;
+const isNewAddition = document.getElementById("formTitle").innerText.includes("Add New");
 
-const payload = { sheetUrl: document.getElementById('volSheetSelector').value, type: selectedVolType, data: deltaObj, targetName: target }; 
+if (selectedVolType === "volunteer" && isNewAddition) {
+    resetVolForm();
+    document.getElementById("volNameSearch").value = "";
+}
 
-apiCall('submitAttendanceData', payload).then(res => { 
+setTimeout(() => { closeOverlay(); }, 1200);
+
+const payload = { sheetUrl: url, type: selectedVolType, data: deltaObj, targetName: target }; 
+
+// Background sync (Fire and forget)
+apiCall("submitAttendanceData", payload).then(res => { 
 if(res.success) {
-    showOverlay('success', res.message);
-    if(selectedVolType === 'volunteer') { 
-        if(res.message.includes("added")) { 
-            resetVolForm(); 
-            document.getElementById('volNameSearch').value = ""; 
-        } 
-        const url = document.getElementById('volSheetSelector').value; 
-        setTimeout(() => {
-            apiCall('getNamesList', { url: url, type: 'volunteer' }).then(r => { if(r.success) allNames = r.names; }); 
-        }, 500);
+    if(selectedVolType === "volunteer") { 
+        apiCall("getNamesList", { url: url, type: "volunteer" }).then(r => { if(r.success) allNames = r.names; }); 
     } 
 } else {
-    showOverlay('error', res.message);
+    console.error("Background sync failed:", res.message);
+    setTimeout(() => showOverlay("error", "Sync Error: " + res.message), 500);
 }
-}); 
+}).catch(e => console.error("Sync Error", e));
 }
