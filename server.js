@@ -153,6 +153,8 @@ app.post('/api', async (req, res) => {
                     redirect: 'follow'
                 });
                 const text = await gasResponse.text();
+                // Flush cache AGAIN after the write completes to clear any stale reads that snuck in
+                cache.flushAll();
                 return JSON.parse(text);
             });
             return res.json(response);

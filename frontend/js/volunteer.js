@@ -594,9 +594,29 @@ showOverlay("success", "Attendance submitted securely.");
 const url = document.getElementById("volSheetSelector").value;
 const isNewAddition = document.getElementById("formTitle").innerText.includes("Add New");
 
+// Optimistically update the local cache so re-selecting is instant and shows the new state
+const cacheKey = `${selectedVolType}_${target || 'NEW'}`;
+if (personDataCache[cacheKey]) {
+    personDataCache[cacheKey] = personDataCache[cacheKey].then(oldRes => {
+        if (oldRes && oldRes.success) {
+            let newRes = JSON.parse(JSON.stringify(oldRes));
+            for (let k in deltaObj) {
+                newRes.data[k] = deltaObj[k];
+            }
+            return newRes;
+        }
+        return oldRes;
+    });
+}
+
 if (selectedVolType === "volunteer" && isNewAddition) {
     resetVolForm();
     document.getElementById("volNameSearch").value = "";
+} else {
+    // If we're updating an existing person, we could also hide the form
+    document.getElementById('volFormContainer').classList.add('hidden');
+    document.getElementById("volNameSearch").value = "";
+    toggleClearBtn('volNameSearch');
 }
 
 setTimeout(() => { closeOverlay(); }, 1200);
