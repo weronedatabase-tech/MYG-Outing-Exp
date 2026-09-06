@@ -182,7 +182,14 @@ loadCommAttendanceData();
 
 function openFilteredPairingFromTracker() {
 if (!currentCommAttSheetUrl) return;
-navigateTo('pairing.html', { url: currentCommAttSheetUrl, filtered: true, source: 'tracker.html' });
+
+if (isAdminAuthenticated) {
+    navigateTo('pairing.html', { url: currentCommAttSheetUrl, filtered: true, source: 'tracker.html' });
+} else {
+    requestAccess(null, () => {
+        navigateTo('pairing.html', { url: currentCommAttSheetUrl, filtered: true, source: 'tracker.html' });
+    });
+}
 }
 
 window.handleNavBack = function() {

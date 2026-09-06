@@ -9,9 +9,11 @@ function requestAccess(urlPath, actionFn = null) {
                closeOverlay();
                if (isValid) {
                    isAdminAuthenticated = true;
+                   sessionStorage.setItem('adminKeyValidated', savedKey);
                    executeAccess(urlPath, actionFn);
                } else {
                    localStorage.removeItem('adminKey');
+                   sessionStorage.removeItem('adminKeyValidated');
                    promptAuthModal(urlPath, actionFn);
                }
            });
@@ -71,7 +73,8 @@ function handleAuth(e) {
        btn.innerText = "Access"; 
        if (isValid) { 
            isAdminAuthenticated = true; 
-           localStorage.setItem('adminKey', pwd); 
+           localStorage.setItem('adminKey', pwd);
+           sessionStorage.setItem('adminKeyValidated', pwd); 
            const target = pendingView; 
            const action = pendingAction;
            closeAuthModal(false); 

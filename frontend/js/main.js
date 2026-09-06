@@ -28,14 +28,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const savedKey = localStorage.getItem('adminKey');
   if (savedKey) {
-      apiCall('verifyAdminPassword', savedKey).then(isValid => {
-          if (isValid) {
-              isAdminAuthenticated = true;
-          } else {
-              localStorage.removeItem('adminKey');
-              isAdminAuthenticated = false;
-          }
-      });
+      if (sessionStorage.getItem('adminKeyValidated') === savedKey) {
+          isAdminAuthenticated = true;
+      } else {
+          apiCall('verifyAdminPassword', savedKey).then(isValid => {
+              if (isValid) {
+                  isAdminAuthenticated = true;
+                  sessionStorage.setItem('adminKeyValidated', savedKey);
+              } else {
+                  localStorage.removeItem('adminKey');
+                  sessionStorage.removeItem('adminKeyValidated');
+                  isAdminAuthenticated = false;
+              }
+          });
+      }
   }
 
   silentHydration();
