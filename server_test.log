@@ -1,0 +1,5 @@
+Server listening on port 3001
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[FETCH] Executing getAppSettings to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[GAS RESPONSE TEXT] length=325 prefix={"traineeCols":["ATTENDING? (Y/N)","No of Caregivers following","Meeting Location:","Fetching Arrang

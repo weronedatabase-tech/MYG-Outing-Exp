@@ -1,0 +1,112 @@
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[FETCH] Executing getAppSettings to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[GAS RESPONSE TEXT] length=7718 prefix=<!DOCTYPE html><html lang="zh"><head><script nonce="8YcrmqreOVogU7hfbH70zA">window['ppConfig'] = {pr
+ERROR: [ERROR] getAppSettings: Invalid JSON from GAS: <!DOCTYPE html><html lang="zh"><head><script nonce="8YcrmqreOVogU7hfbH70zA">window['ppConfig'] = {pr
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[FETCH] Executing getAppSettings to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[GAS RESPONSE TEXT] length=7718 prefix=<!DOCTYPE html><html lang="zh"><head><script nonce="ngWixCSpt-6moIyQAHJh5A">window['ppConfig'] = {pr
+ERROR: [ERROR] getAppSettings: Invalid JSON from GAS: <!DOCTYPE html><html lang="zh"><head><script nonce="ngWixCSpt-6moIyQAHJh5A">window['ppConfig'] = {pr
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getAppSettings"}
+[GAS RESPONSE TEXT] length=325 prefix={"traineeCols":["ATTENDING? (Y/N)","No of Caregivers following","Meeting Location:","Fetching Arrang
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getAppSettings"}
+[GAS RESPONSE TEXT] length=325 prefix={"traineeCols":["ATTENDING? (Y/N)","No of Caregivers following","Meeting Location:","Fetching Arrang
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getAppSettings","data":null}
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getRecentOutingSheets","data":null}
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[GAS RESPONSE TEXT] length=429 prefix={"success":true,"data":[{"id":"1XdFMGPIHZctF09PsdnrFo0Qid5Zj0Eys","fullName":"20260919_Mid Autumn Fe
+[GAS RESPONSE TEXT] length=325 prefix={"traineeCols":["ATTENDING? (Y/N)","No of Caregivers following","Meeting Location:","Fetching Arrang
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getRecentOutingSheets","data":null}
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getAppSettings","data":null}
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[GAS RESPONSE TEXT] length=325 prefix={"traineeCols":["ATTENDING? (Y/N)","No of Caregivers following","Meeting Location:","Fetching Arrang
+[GAS RESPONSE TEXT] length=429 prefix={"success":true,"data":[{"id":"1XdFMGPIHZctF09PsdnrFo0Qid5Zj0Eys","fullName":"20260919_Mid Autumn Fe
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getAppSettings","data":null}
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getRecentOutingSheets","data":null}
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[COLLAPSE] Waiting for in-flight getAppSettings
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[GAS RESPONSE TEXT] length=7718 prefix=<!DOCTYPE html><html lang="zh"><head><script nonce="EYN3C-KoOrUJFAbaZeWnZQ">window['ppConfig'] = {pr
+ERROR: [ERROR] getAppSettings: Invalid JSON from GAS: <!DOCTYPE html><html lang="zh"><head><script nonce="EYN3C-KoOrUJFAbaZeWnZQ">window['ppConfig'] = {pr
+[GAS RESPONSE TEXT] length=43 prefix=MINDS MYG API is Online (Prod Environment).
+ERROR: [ERROR] getRecentOutingSheets: Invalid JSON from GAS: MINDS MYG API is Online (Prod Environment).
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getRecentOutingSheets","data":null}
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getAppSettings","data":null}
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[GAS RESPONSE TEXT] length=7718 prefix=<!DOCTYPE html><html lang="zh"><head><script nonce="5-7c-Nv-a5W1crbqdZ_Wig">window['ppConfig'] = {pr
+ERROR: [ERROR] getRecentOutingSheets: Invalid JSON from GAS: <!DOCTYPE html><html lang="zh"><head><script nonce="5-7c-Nv-a5W1crbqdZ_Wig">window['ppConfig'] = {pr
+[GAS RESPONSE TEXT] length=7718 prefix=<!DOCTYPE html><html lang="zh"><head><script nonce="Mv8jBWuSyE5s9n_Y60UE8A">window['ppConfig'] = {pr
+ERROR: [ERROR] getAppSettings: Invalid JSON from GAS: <!DOCTYPE html><html lang="zh"><head><script nonce="Mv8jBWuSyE5s9n_Y60UE8A">window['ppConfig'] = {pr
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getAppSettings","data":null}
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS
+URL BEING FETCHED: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+PAYLOAD: {"action":"getRecentOutingSheets","data":null}
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[GAS RESPONSE TEXT] length=325 prefix={"traineeCols":["ATTENDING? (Y/N)","No of Caregivers following","Meeting Location:","Fetching Arrang
+[GAS RESPONSE TEXT] length=43 prefix=MINDS MYG API is Online (Prod Environment).
+ERROR: [ERROR] getRecentOutingSheets: Invalid JSON from GAS: MINDS MYG API is Online (Prod Environment).
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)

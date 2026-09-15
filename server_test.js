@@ -1,4 +1,3 @@
-require("./patch_logger.js");
 const express = require('express');
 const path = require('path');
 const config = require('./backend/config.js');
@@ -6,10 +5,10 @@ const NodeCache = require('node-cache');
 const fetch = require('node-fetch'); // fallback for older Node, or global fetch in Node 18+
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
 // Use global fetch
-const _fetch = require('node-fetch');
+const _fetch = typeof fetch !== 'undefined' ? fetch : require('node-fetch');
 
 // Setup cache (15 seconds TTL for read operations to handle burst concurrency)
 const cache = new NodeCache({ stdTTL: 15, checkperiod: 15 });
@@ -110,42 +109,25 @@ app.post('/api', async (req, res) => {
         // 3. Fetch from GAS
         console.log(`[FETCH] Executing ${action} to GAS`);
         const fetchPromise = (async () => {
-            const payload = JSON.stringify({ action, data });
-            let lastError = null;
-            
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    console.log(`[FETCH] Executing ${action} to GAS (Attempt ${attempt})`);
-                    const gasResponse = await _fetch(config.GAS_BACKEND_URL, {
-                        method: 'POST',
-                        body: payload,
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        redirect: 'follow'
-                    });
-                    
-                    const text = await gasResponse.text();
-                    
-                    try {
-                        const parsed = JSON.parse(text);
-                        // Only cache successful reads
-                        if (parsed.success !== false) {
-                             cache.set(cacheKey, parsed);
-                        }
-                        return parsed;
-                    } catch (e) {
-                        const errorMsg = "Invalid JSON from GAS: " + text.substring(0, 100);
-                        console.warn(`[WARN] ${action} attempt ${attempt} failed: ${errorMsg}`);
-                        lastError = new Error(errorMsg);
-                        // Wait before retrying
-                        if (attempt < 3) await new Promise(res => setTimeout(res, attempt * 1000));
-                    }
-                } catch (err) {
-                    console.warn(`[WARN] ${action} attempt ${attempt} network error: ${err.message}`);
-                    lastError = err;
-                    if (attempt < 3) await new Promise(res => setTimeout(res, attempt * 1000));
+            console.log(`URL BEING FETCHED: ${config.GAS_BACKEND_URL}`);
+            const gasResponse = await _fetch(config.GAS_BACKEND_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action, data }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                redirect: 'follow'
+            });
+            const text = await gasResponse.text();
+            console.log(`[GAS RESPONSE TEXT] length=${text.length} prefix=${text.substring(0, 100)}`);
+            try {
+                const parsed = JSON.parse(text);
+                // Only cache successful reads
+                if (parsed.success !== false) {
+                     cache.set(cacheKey, parsed);
                 }
+                return parsed;
+            } catch (e) {
+                throw new Error("Invalid JSON from GAS: " + text.substring(0, 100));
             }
-            throw lastError;
         })();
 
         inFlightRequests.set(cacheKey, fetchPromise);
@@ -166,37 +148,16 @@ app.post('/api', async (req, res) => {
         cache.flushAll();
         try {
             const response = await writeQueue.add(async () => {
-                let lastError = null;
-                const payload = JSON.stringify({ action, data });
-                
-                for (let attempt = 1; attempt <= 3; attempt++) {
-                    try {
-                        const gasResponse = await _fetch(config.GAS_BACKEND_URL, {
-                            method: 'POST',
-                            body: payload,
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            redirect: 'follow'
-                        });
-                        const text = await gasResponse.text();
-                        
-                        try {
-                            const parsed = JSON.parse(text);
-                            // Flush cache AGAIN after the write completes to clear any stale reads that snuck in
-                            cache.flushAll();
-                            return parsed;
-                        } catch (e) {
-                            const errorMsg = "Invalid JSON from GAS: " + text.substring(0, 100);
-                            console.warn(`[WARN] Write action ${action} attempt ${attempt} failed: ${errorMsg}`);
-                            lastError = new Error(errorMsg);
-                            if (attempt < 3) await new Promise(res => setTimeout(res, attempt * 1000));
-                        }
-                    } catch (err) {
-                        console.warn(`[WARN] Write action ${action} attempt ${attempt} network error: ${err.message}`);
-                        lastError = err;
-                        if (attempt < 3) await new Promise(res => setTimeout(res, attempt * 1000));
-                    }
-                }
-                throw lastError;
+                const gasResponse = await _fetch(config.GAS_BACKEND_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action, data }),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    redirect: 'follow'
+                });
+                const text = await gasResponse.text();
+                // Flush cache AGAIN after the write completes to clear any stale reads that snuck in
+                cache.flushAll();
+                return JSON.parse(text);
             });
             return res.json(response);
         } catch (err) {

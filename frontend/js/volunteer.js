@@ -609,6 +609,20 @@ if (personDataCache[cacheKey]) {
     });
 }
 
+const payloadType = selectedVolType;
+
+// Optimistically inject the new name into local arrays so it's instantly searchable
+if (isNewAddition && target) {
+    if (preloadedNames[payloadType] && !preloadedNames[payloadType].includes(target)) {
+        preloadedNames[payloadType].push(target);
+        preloadedNames[payloadType].sort();
+    }
+    if (currentVolTypeRequest === payloadType && allNames && !allNames.includes(target)) {
+        allNames.push(target);
+        allNames.sort();
+    }
+}
+
 if (selectedVolType === "volunteer" && isNewAddition) {
     resetVolForm();
     document.getElementById("volNameSearch").value = "";
@@ -621,14 +635,20 @@ if (selectedVolType === "volunteer" && isNewAddition) {
 
 setTimeout(() => { closeOverlay(); }, 1200);
 
-const payload = { sheetUrl: url, type: selectedVolType, data: deltaObj, targetName: target }; 
+const payload = { sheetUrl: url, type: payloadType, data: deltaObj, targetName: target }; 
 
 // Background sync (Fire and forget)
 apiCall("submitAttendanceData", payload).then(res => { 
 if(res.success) {
-    if(selectedVolType === "volunteer") { 
-        apiCall("getNamesList", { url: url, type: "volunteer" }).then(r => { if(r.success) allNames = r.names; }); 
-    } 
+    // Refresh the definitive list from the backend in the background
+    apiCall("getNamesList", { url: url, type: payloadType }).then(r => { 
+        if(r.success) {
+            preloadedNames[payloadType] = r.names;
+            if (currentVolTypeRequest === payloadType) {
+                allNames = r.names;
+            }
+        } 
+    }); 
 } else {
     console.error("Background sync failed:", res.message);
     setTimeout(() => showOverlay("error", "Sync Error: " + res.message), 500);
