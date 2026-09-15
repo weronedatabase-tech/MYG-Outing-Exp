@@ -1,0 +1,363 @@
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycbwOQHiPXoVB10_T81K1mfWPZyahHFXHnrbR7KuM4GI0tQjnsaGjQMunDJWcXRP5g0aENQ/exec
+Server listening on port 3000
+Proxying API requests to GAS: https://script.google.com/macros/s/AKfycby16sDgMLOCkZah70i3GV50aAbNIVcQ9GEYDx83YZjJkoK49FXbw-_tgqE0emQfB0TISw/exec
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[QUEUE] Enqueueing write action: submitAttendanceData
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[QUEUE] Enqueueing write action: verifyAdminPassword
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[FETCH] Executing getOutingDetails to GAS
+[FETCH] Executing getOutingDetails to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing fetchManualPairingData to GAS
+[FETCH] Executing fetchManualPairingData to GAS (Attempt 1)
+[CACHE HIT] getAppSettings
+[CACHE HIT] getOutingDetails
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[CACHE CLEARED] via forceBackendRefresh
+[QUEUE] Enqueueing write action: forceBackendRefresh
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[QUEUE] Enqueueing write action: verifyAdminPassword
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getNamesList
+[CACHE HIT] getNamesList
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[CACHE HIT] getAppSettings
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[COLLAPSE] Waiting for in-flight getNamesList
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getNamesList
+[FETCH] Executing getNamesList to GAS (Attempt 2)
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[CACHE CLEARED] via forceBackendRefresh
+[QUEUE] Enqueueing write action: forceBackendRefresh
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[QUEUE] Enqueueing write action: verifyAdminPassword
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[COLLAPSE] Waiting for in-flight getAppSettings
+[FETCH] Executing getOutingDetails to GAS
+[FETCH] Executing getOutingDetails to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[QUEUE] Enqueueing write action: updateOuting
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[FETCH] Executing getOutingDetails to GAS
+[FETCH] Executing getOutingDetails to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[COLLAPSE] Waiting for in-flight getAppSettings
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[CACHE CLEARED] via forceBackendRefresh
+[QUEUE] Enqueueing write action: forceBackendRefresh
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[QUEUE] Enqueueing write action: verifyAdminPassword
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[QUEUE] Enqueueing write action: submitAttendanceData
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[FETCH] Executing getOutingDetails to GAS
+[FETCH] Executing getOutingDetails to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing fetchManualPairingData to GAS
+[FETCH] Executing fetchManualPairingData to GAS (Attempt 1)
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[CACHE HIT] getOutingDetails
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getAppSettings
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[FETCH] Executing getPersonData to GAS
+[FETCH] Executing getPersonData to GAS (Attempt 1)
+[QUEUE] Enqueueing write action: submitAttendanceData
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing getOutingDetails to GAS
+[FETCH] Executing getOutingDetails to GAS (Attempt 1)
+[CACHE HIT] getAppSettings
+[CACHE HIT] getRecentOutingSheets
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing fetchManualPairingData to GAS
+[FETCH] Executing fetchManualPairingData to GAS (Attempt 1)
+[CACHE HIT] getAppSettings
+[QUEUE] Enqueueing write action: syncManualPairingUpdates
+[QUEUE] Enqueueing write action: syncManualPairingUpdates
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[COLLAPSE] Waiting for in-flight getRecentOutingSheets
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[FETCH] Executing fetchCommAttendance to GAS
+[FETCH] Executing fetchCommAttendance to GAS (Attempt 1)
+[CACHE HIT] getRecentOutingSheets
+[FETCH] Executing fetchManualPairingData to GAS
+[FETCH] Executing fetchManualPairingData to GAS (Attempt 1)
+[CACHE HIT] getAppSettings
+[QUEUE] Enqueueing write action: syncManualPairingUpdates
+[FETCH] Executing getAppSettings to GAS
+[FETCH] Executing getAppSettings to GAS (Attempt 1)
+[FETCH] Executing getRecentOutingSheets to GAS
+[FETCH] Executing getRecentOutingSheets to GAS (Attempt 1)
+[FETCH] Executing fetchCommAttendance to GAS
+[FETCH] Executing fetchCommAttendance to GAS (Attempt 1)
+[CACHE HIT] fetchCommAttendance
+[QUEUE] Enqueueing write action: syncCommAttendance
+[QUEUE] Enqueueing write action: syncCommAttendance
+[QUEUE] Enqueueing write action: syncCommAttendance
+[FETCH] Executing fetchCommAttendance to GAS
+[FETCH] Executing fetchCommAttendance to GAS (Attempt 1)
+[CACHE HIT] fetchCommAttendance
+[FETCH] Executing fetchCommAttendance to GAS
+[FETCH] Executing fetchCommAttendance to GAS (Attempt 1)
+[CACHE HIT] fetchCommAttendance
+[CACHE HIT] fetchCommAttendance
+[FETCH] Executing fetchCommAttendance to GAS
+[FETCH] Executing fetchCommAttendance to GAS (Attempt 1)
+[CACHE HIT] fetchCommAttendance
+[FETCH] Executing fetchCommAttendance to GAS
+[FETCH] Executing fetchCommAttendance to GAS (Attempt 1)
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)
+[CACHE HIT] fetchCommAttendance
+[FETCH] Executing fetchCommAttendance to GAS
+[FETCH] Executing fetchCommAttendance to GAS (Attempt 1)
+[CACHE HIT] fetchCommAttendance
+[FETCH] Executing fetchCommAttendance to GAS
+[FETCH] Executing fetchCommAttendance to GAS (Attempt 1)
+[FETCH] Executing getNamesList to GAS
+[FETCH] Executing getNamesList to GAS (Attempt 1)

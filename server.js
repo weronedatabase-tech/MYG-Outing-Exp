@@ -9,7 +9,7 @@ const app = express();
 const port = 3000;
 
 // Use global fetch
-const _fetch = require('node-fetch');
+const _fetch = typeof fetch !== 'undefined' ? fetch : require('node-fetch');
 
 // Setup cache (15 seconds TTL for read operations to handle burst concurrency)
 const cache = new NodeCache({ stdTTL: 15, checkperiod: 15 });
@@ -119,7 +119,7 @@ app.post('/api', async (req, res) => {
                     const gasResponse = await _fetch(config.GAS_BACKEND_URL, {
                         method: 'POST',
                         body: payload,
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
                         redirect: 'follow'
                     });
                     
@@ -174,7 +174,7 @@ app.post('/api', async (req, res) => {
                         const gasResponse = await _fetch(config.GAS_BACKEND_URL, {
                             method: 'POST',
                             body: payload,
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
                             redirect: 'follow'
                         });
                         const text = await gasResponse.text();
