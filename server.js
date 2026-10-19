@@ -770,24 +770,62 @@ async function fetchFromGAS(action, data, maxAttempts = 3) {
     throw lastError;
 }
 
+function getOutingThresholdDateNum() {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const tY = d.getFullYear();
+    const tM = String(d.getMonth() + 1).padStart(2, '0');
+    const tD = String(d.getDate()).padStart(2, '0');
+    return parseInt(`${tY}${tM}${tD}`, 10);
+}
+
+function filterRecentOutingSheets(resObj) {
+    if (!resObj || !resObj.success || !Array.isArray(resObj.data)) return resObj;
+    const threshold = getOutingThresholdDateNum();
+    resObj.data = resObj.data.filter(item => {
+        if (!item) return false;
+        let dateNum = item.folderDateNum ? parseInt(item.folderDateNum, 10) : NaN;
+        if (isNaN(dateNum) && item.fullName) {
+            const m = String(item.fullName).match(/(\d{8})/);
+            if (m) dateNum = parseInt(m[1], 10);
+        }
+        if (isNaN(dateNum) && item.formattedDate) {
+            const parsed = new Date(item.formattedDate);
+            if (!isNaN(parsed.getTime())) {
+                const y = parsed.getFullYear();
+                const m = String(parsed.getMonth() + 1).padStart(2, '0');
+                const d = String(parsed.getDate()).padStart(2, '0');
+                dateNum = parseInt(`${y}${m}${d}`, 10);
+            }
+        }
+        return isNaN(dateNum) ? true : dateNum >= threshold;
+    });
+    return resObj;
+}
+
 async function executeReadAction(action, data, bypassCache = false) {
     const cacheKey = getReadCacheKey(action, data);
 
     if (!bypassCache) {
         const cachedResponse = cache.get(cacheKey);
         if (cachedResponse) {
-            return applyPendingMutationsToState(action, data, cachedResponse);
+            const patched = applyPendingMutationsToState(action, data, cachedResponse);
+            return action === 'getRecentOutingSheets' ? filterRecentOutingSheets(patched) : patched;
         }
     }
 
     if (inFlightRequests.has(cacheKey)) {
         const res = await inFlightRequests.get(cacheKey);
-        return applyPendingMutationsToState(action, data, res);
+        const patched = applyPendingMutationsToState(action, data, res);
+        return action === 'getRecentOutingSheets' ? filterRecentOutingSheets(patched) : patched;
     }
 
     const fetchPromise = (async () => {
         const parsed = await fetchFromGAS(action, data, 3);
-        const patched = applyPendingMutationsToState(action, data, parsed);
+        let patched = applyPendingMutationsToState(action, data, parsed);
+        if (action === 'getRecentOutingSheets') {
+            patched = filterRecentOutingSheets(patched);
+        }
         if (patched && patched.success !== false) {
             cache.set(cacheKey, patched);
         }

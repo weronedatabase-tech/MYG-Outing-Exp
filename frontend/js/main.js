@@ -157,13 +157,14 @@ function bindGlobalCollabEvents() {
 
   window.collabOn('global:outingsUpdated', (msg) => {
       if (msg && Array.isArray(msg.sheets)) {
-          currentSheetList = msg.sheets;
+          const activeSheets = window.filterActiveOutings(msg.sheets);
+          currentSheetList = activeSheets;
           try {
-              localStorage.setItem('myg_sheetList', JSON.stringify(msg.sheets));
+              localStorage.setItem('myg_sheetList', JSON.stringify(activeSheets));
           } catch (e) {}
 
           if (typeof populateHomeSelectors === 'function') {
-              populateHomeSelectors(msg.sheets);
+              populateHomeSelectors(activeSheets);
           }
           if (typeof renderCommDashboardCards === 'function' && document.getElementById('upcomingList')) {
               loadSheets('comm', true);
@@ -185,13 +186,46 @@ function bindGlobalCollabEvents() {
   });
 }
 
+window.getOutingThresholdDateNum = function() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const tY = d.getFullYear();
+  const tM = String(d.getMonth() + 1).padStart(2, '0');
+  const tD = String(d.getDate()).padStart(2, '0');
+  return parseInt(`${tY}${tM}${tD}`, 10);
+};
+
+window.filterActiveOutings = function(data) {
+  if (!Array.isArray(data)) return [];
+  const threshold = window.getOutingThresholdDateNum();
+  return data.filter(item => {
+      if (!item) return false;
+      let dateNum = item.folderDateNum ? parseInt(item.folderDateNum, 10) : NaN;
+      if (isNaN(dateNum) && item.fullName) {
+          const m = String(item.fullName).match(/(\d{8})/);
+          if (m) dateNum = parseInt(m[1], 10);
+      }
+      if (isNaN(dateNum) && item.formattedDate) {
+          const parsed = new Date(item.formattedDate);
+          if (!isNaN(parsed.getTime())) {
+              const y = parsed.getFullYear();
+              const m = String(parsed.getMonth() + 1).padStart(2, '0');
+              const d = String(parsed.getDate()).padStart(2, '0');
+              dateNum = parseInt(`${y}${m}${d}`, 10);
+          }
+      }
+      return isNaN(dateNum) ? true : dateNum >= threshold;
+  });
+};
+
 function silentHydration() {
   if (isHydrated) return;
   
   apiCall('getRecentOutingSheets', null).then(res => {
-      if (res && res.success && res.data && res.data.length > 0) {
-          currentSheetList = res.data;
-          localStorage.setItem('myg_sheetList', JSON.stringify(res.data)); // Core MPA Pre-cache
+      if (res && res.success && Array.isArray(res.data)) {
+          const activeData = window.filterActiveOutings(res.data);
+          currentSheetList = activeData;
+          localStorage.setItem('myg_sheetList', JSON.stringify(activeData)); // Core MPA Pre-cache
           isHydrated = true;
       }
   }).catch(e => console.warn("Hydration failed silently", e));
@@ -199,8 +233,9 @@ function silentHydration() {
 
 // Global utility to find the most immediate upcoming event
 window.getClosestEventUrl = function(data) {
-  if(!data || data.length === 0) return null;
-  if(data.length === 1) return data[0].sheetUrl;
+  const activeData = window.filterActiveOutings ? window.filterActiveOutings(data) : data;
+  if(!activeData || activeData.length === 0) return null;
+  if(activeData.length === 1) return activeData[0].sheetUrl;
   
   const today = new Date();
   const tY = today.getFullYear();
@@ -210,9 +245,9 @@ window.getClosestEventUrl = function(data) {
   
   // The backend data array is now sorted ascending by folderDateNum (earliest to latest)
   let closestFuture = null;
-  for(let i = 0; i < data.length; i++) {
-      if(data[i].folderDateNum >= todayNum) {
-          closestFuture = data[i];
+  for(let i = 0; i < activeData.length; i++) {
+      if(activeData[i].folderDateNum >= todayNum) {
+          closestFuture = activeData[i];
           break;
       }
   }
@@ -220,7 +255,7 @@ window.getClosestEventUrl = function(data) {
   if(closestFuture) return closestFuture.sheetUrl;
   
   // If no future events exist, return the most recent past event (which is the last item)
-  return data[data.length - 1].sheetUrl;
+  return activeData[activeData.length - 1].sheetUrl;
 };
 
 if ('serviceWorker' in navigator) {

@@ -116,7 +116,8 @@ theme: { extend: { colors: { primary: '#3b82f6' } } }
 </main>
 
 <script>
-function populateHomeSelectors(data) {
+function populateHomeSelectors(rawData) {
+const data = window.filterActiveOutings ? window.filterActiveOutings(rawData) : rawData;
 const volSelect = document.getElementById('volunteerEventSelect');
 const trackerSelect = document.getElementById('trackerEventSelect');
 if(!volSelect || !trackerSelect) return;
@@ -152,14 +153,19 @@ const localDataStr = localStorage.getItem('myg_sheetList');
 if(localDataStr) {
  try {
      const parsed = JSON.parse(localDataStr);
-     populateHomeSelectors(parsed);
+     const filtered = window.filterActiveOutings ? window.filterActiveOutings(parsed) : parsed;
+     if (JSON.stringify(filtered) !== localDataStr) {
+         localStorage.setItem('myg_sheetList', JSON.stringify(filtered));
+     }
+     populateHomeSelectors(filtered);
  } catch(e) {}
 }
 
 apiCall('getRecentOutingSheets', null).then(res => {
  if(res.success) {
-     localStorage.setItem('myg_sheetList', JSON.stringify(res.data));
-     populateHomeSelectors(res.data);
+     const filtered = window.filterActiveOutings ? window.filterActiveOutings(res.data) : res.data;
+     localStorage.setItem('myg_sheetList', JSON.stringify(filtered));
+     populateHomeSelectors(filtered);
      isHydrated = true;
  }
 });

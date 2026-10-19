@@ -87,8 +87,26 @@ const selector = document.getElementById(selectorId);
 const spinner = document.getElementById(loadingId);
 const listContainer = document.getElementById('upcomingList');
 
-const renderData = (data) => {
+const renderData = (rawData) => {
+const data = window.filterActiveOutings ? window.filterActiveOutings(rawData) : (rawData || []);
 currentSheetList = data;
+if (data.length === 0) {
+if (selector) {
+   selector.disabled = false;
+   selector.innerHTML = '<option disabled selected>No upcoming events</option>';
+}
+if (viewId === 'comm' && listContainer) {
+   listContainer.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400 italic">No upcoming outings found.</p>';
+   ['scrubBtn', 'manualPairBtn', 'groupBtn', 'manualGroupBtn', 'assignICBtn'].forEach(btnId => {
+       const btn = document.getElementById(btnId);
+       if (btn) {
+           btn.disabled = true;
+           btn.classList.add('opacity-50', 'cursor-not-allowed');
+       }
+   });
+}
+return;
+}
 if (selector) {
 selector.innerHTML = '';
 selector.disabled = false;
@@ -124,16 +142,23 @@ const localDataStr = localStorage.getItem('myg_sheetList');
 if (!forceRefresh && localDataStr) {
 try {
 const parsed = JSON.parse(localDataStr);
-if (parsed && parsed.length > 0) {
-renderData(parsed);
+const activeParsed = window.filterActiveOutings ? window.filterActiveOutings(parsed) : parsed;
+if (JSON.stringify(activeParsed) !== localDataStr) {
+   localStorage.setItem('myg_sheetList', JSON.stringify(activeParsed));
+}
+if (activeParsed && activeParsed.length > 0) {
+renderData(activeParsed);
 
 // Silent background update to re-verify
 if(spinner) spinner.classList.remove('hidden');
 apiCall('getRecentOutingSheets', null).then(res => {
    if(spinner) spinner.classList.add('hidden');
-   if (res.success && JSON.stringify(res.data) !== localDataStr) {
-       localStorage.setItem('myg_sheetList', JSON.stringify(res.data));
-       renderData(res.data);
+   if (res.success) {
+       const activeRes = window.filterActiveOutings ? window.filterActiveOutings(res.data) : res.data;
+       if (JSON.stringify(activeRes) !== JSON.stringify(activeParsed)) {
+           localStorage.setItem('myg_sheetList', JSON.stringify(activeRes));
+           renderData(activeRes);
+       }
    }
 });
 return;
@@ -187,18 +212,9 @@ apiCall('getRecentOutingSheets', null).then(res => {
 if(spinner) spinner.classList.add('hidden');
 
 if (res.success) {
-localStorage.setItem('myg_sheetList', JSON.stringify(res.data));
-if(res.data.length > 0) {
-renderData(res.data);
-} else {
-if (selector) {
-   selector.disabled = false;
-   selector.innerHTML = '<option disabled selected>No upcoming events</option>';
-}
-if(viewId === 'comm' && listContainer) {
-   listContainer.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400 italic">No upcoming outings found.</p>';
-}
-}
+const activeRes = window.filterActiveOutings ? window.filterActiveOutings(res.data) : res.data;
+localStorage.setItem('myg_sheetList', JSON.stringify(activeRes));
+renderData(activeRes);
 } else {
 if (selector) {
 selector.disabled = false;

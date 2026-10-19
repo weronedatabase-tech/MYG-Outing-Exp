@@ -1,4 +1,4 @@
-const CACHE_NAME = 'myg-pwa-cache-v15';
+const CACHE_NAME = 'myg-pwa-cache-v16';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

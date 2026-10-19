@@ -58,12 +58,14 @@ function loadVolunteerEvents() {
   const nameEl = document.getElementById('volEventName');
   const dateTextEl = document.getElementById('volEventDateText');
 
-  const renderSelectedEvent = (data) => {
+  const renderSelectedEvent = (rawData) => {
+      const data = window.filterActiveOutings ? window.filterActiveOutings(rawData) : (rawData || []);
       currentSheetList = data;
       if (!data || data.length === 0) {
           if (nameEl) nameEl.innerText = "No upcoming events";
           if (dateTextEl) dateTextEl.innerText = "N/A";
           if (hiddenInput) hiddenInput.value = "";
+          if (typeof resetVolForm === 'function') resetVolForm();
           return;
       }
 
@@ -102,13 +104,20 @@ function loadVolunteerEvents() {
   if (localDataStr) {
       try {
           const parsed = JSON.parse(localDataStr);
-          if (parsed && parsed.length > 0) {
-              renderSelectedEvent(parsed);
+          const activeParsed = window.filterActiveOutings ? window.filterActiveOutings(parsed) : parsed;
+          if (JSON.stringify(activeParsed) !== localDataStr) {
+              localStorage.setItem('myg_sheetList', JSON.stringify(activeParsed));
+          }
+          if (activeParsed && activeParsed.length > 0) {
+              renderSelectedEvent(activeParsed);
               if (spinner) spinner.classList.add('hidden');
               apiCall('getRecentOutingSheets', null).then(res => {
-                  if (res && res.success && JSON.stringify(res.data) !== localDataStr) {
-                      localStorage.setItem('myg_sheetList', JSON.stringify(res.data));
-                      renderSelectedEvent(res.data);
+                  if (res && res.success) {
+                      const activeRes = window.filterActiveOutings ? window.filterActiveOutings(res.data) : res.data;
+                      if (JSON.stringify(activeRes) !== JSON.stringify(activeParsed)) {
+                          localStorage.setItem('myg_sheetList', JSON.stringify(activeRes));
+                          renderSelectedEvent(activeRes);
+                      }
                   }
               });
               return;
@@ -122,8 +131,9 @@ function loadVolunteerEvents() {
       if (spinner) spinner.classList.add('hidden');
 
       if (res && res.success && res.data) {
-          localStorage.setItem('myg_sheetList', JSON.stringify(res.data));
-          renderSelectedEvent(res.data);
+          const activeRes = window.filterActiveOutings ? window.filterActiveOutings(res.data) : res.data;
+          localStorage.setItem('myg_sheetList', JSON.stringify(activeRes));
+          renderSelectedEvent(activeRes);
       } else {
           if (nameEl) nameEl.innerText = "Error loading event";
           if (dateTextEl) dateTextEl.innerText = (res && res.message) ? res.message : "Please refresh";

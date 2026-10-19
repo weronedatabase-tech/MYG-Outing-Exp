@@ -254,6 +254,35 @@ ScriptApp.newTrigger('precomputeRecentOutings')
 precomputeRecentOutings();
 }
 
+function getThresholdDateNum() {
+const today = new Date();
+today.setDate(today.getDate() - 1);
+var tz = Session.getScriptTimeZone() || "Asia/Singapore";
+try {
+  return parseInt(Utilities.formatDate(today, tz, "yyyyMMdd"), 10);
+} catch (e) {
+  const tY = today.getFullYear();
+  const tM = String(today.getMonth() + 1).padStart(2, '0');
+  const tD = String(today.getDate()).padStart(2, '0');
+  return parseInt(`${tY}${tM}${tD}`, 10);
+}
+}
+
+function filterOutingsByThreshold(resObj) {
+if (!resObj || !resObj.success || !Array.isArray(resObj.data)) return resObj;
+const thresholdDateNum = getThresholdDateNum();
+resObj.data = resObj.data.filter(item => {
+  if (!item) return false;
+  let dNum = item.folderDateNum ? parseInt(item.folderDateNum, 10) : NaN;
+  if (isNaN(dNum) && item.fullName) {
+    const m = String(item.fullName).match(/(\d{8})/);
+    if (m) dNum = parseInt(m[1], 10);
+  }
+  return isNaN(dNum) ? true : dNum >= thresholdDateNum;
+});
+return resObj;
+}
+
 function precomputeRecentOutings() {
 const parentFolder = DriveApp.getFolderById(getParentFolderId());
 const subfolders = parentFolder.getFolders();
@@ -262,12 +291,7 @@ const folderObjMap = {};
 const regex = /(\d{8})/;
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const today = new Date();
-today.setDate(today.getDate() - 1);
-const tY = today.getFullYear();
-const tM = String(today.getMonth() + 1).padStart(2, '0');
-const tD = String(today.getDate()).padStart(2, '0');
-const thresholdDateNum = parseInt(`${tY}${tM}${tD}`);
+const thresholdDateNum = getThresholdDateNum();
 
 let count = 0;
 while (subfolders.hasNext()) {
@@ -278,7 +302,7 @@ let name = folder.getName();
 let match = name.match(regex);
 if (match) {
 let dStr = match[1];
-let folderDateNum = parseInt(dStr);
+let folderDateNum = parseInt(dStr, 10);
 if (folderDateNum < thresholdDateNum) continue;
 
 let cleanName = name.replace(dStr, "").replace(/^[_-\s]+|[_-\s]+$/g, "").trim();
@@ -315,7 +339,7 @@ result.push(f);
 }
 }
 
-const finalResult = { success: true, data: result };
+const finalResult = { success: true, data: result, thresholdDateNum: thresholdDateNum };
 const finalStr = JSON.stringify(finalResult);
 try { CacheService.getScriptCache().put('CRON_OUTINGS_' + ENV, finalStr, 21600); } catch(e) {}
 try { PropertiesService.getScriptProperties().setProperty('CRON_OUTINGS_' + ENV, finalStr); } catch(e) {}
@@ -325,22 +349,31 @@ return finalResult;
 function getRecentOutingSheets() {
 const cacheKey = "CRON_OUTINGS_" + ENV;
 const cache = CacheService.getScriptCache();
+const currentThreshold = getThresholdDateNum();
+
 let cached = cache.get(cacheKey);
 if (cached) {
-try { return JSON.parse(cached); } catch(e) {}
+try {
+  const parsed = JSON.parse(cached);
+  return filterOutingsByThreshold(parsed);
+} catch(e) {}
 }
-// Permanent PropertiesService fallback to avoid sync 20s DriveApp re-computation on cache miss
+// PropertiesService fallback: only reuse if computed today, and always filter out expired events
 try {
 let propCached = PropertiesService.getScriptProperties().getProperty(cacheKey);
 if (propCached) {
   try {
-    cache.put(cacheKey, propCached, 21600);
-    return JSON.parse(propCached);
+    const parsed = JSON.parse(propCached);
+    if (parsed && parsed.thresholdDateNum === currentThreshold) {
+      const filtered = filterOutingsByThreshold(parsed);
+      cache.put(cacheKey, JSON.stringify(filtered), 21600);
+      return filtered;
+    }
   } catch(e) {}
 }
 } catch(e) {}
 
-// If both CRON caches are missing, compute synchronously
+// If cache is missing or from a previous day, compute synchronously
 return precomputeRecentOutings();
 }
 
