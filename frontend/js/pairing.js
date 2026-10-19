@@ -45,6 +45,10 @@ function loadManualPairingData() {
 const overlay = document.getElementById('manualPairingLoadingOverlay');
 if(overlay) overlay.classList.remove('hidden');
 
+if (typeof window.collabSetContext === 'function') {
+window.collabSetContext('pairing', currentManualPairingSheetUrl);
+}
+
 apiCall('fetchManualPairingData', { sheetUrl: currentManualPairingSheetUrl }).then(res => {
 if(overlay) overlay.classList.add('hidden');
 if (res.success) {
@@ -83,29 +87,31 @@ if (showOnlyUnpairedVols) {
 renderManualPairings();
 };
 
-function triggerManualPairingPulse(sourceName, targetName, isPaired) {
+function triggerManualPairingPulse(sourceName, targetName, isPaired, isRemote = false) {
 setTimeout(() => {
 requestAnimationFrame(() => {
-const querySource = sourceName.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-const queryTarget = targetName.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+const querySource = (sourceName || '').replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+const queryTarget = (targetName || '').replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
-const sourceCard = document.querySelector(`.dnd-dropzone[data-name="${querySource}"]`);
-const targetCard = document.querySelector(`.dnd-dropzone[data-name="${queryTarget}"]`);
+const sourceCard = querySource ? document.querySelector(`.dnd-dropzone[data-name="${querySource}"]`) : null;
+const targetCard = queryTarget ? document.querySelector(`.dnd-dropzone[data-name="${queryTarget}"]`) : null;
 
 [sourceCard, targetCard].forEach(card => {
 if (card) {
-   const container = card.parentElement;
-   if (container) {
-       const containerRect = container.getBoundingClientRect();
-       const cardRect = card.getBoundingClientRect();
-       
-       if (cardRect.height > 0) {
-           const scrollTop = container.scrollTop + (cardRect.top - containerRect.top) - (containerRect.height / 2) + (cardRect.height / 2);
+   if (!isRemote) {
+       const container = card.parentElement;
+       if (container) {
+           const containerRect = container.getBoundingClientRect();
+           const cardRect = card.getBoundingClientRect();
            
-           container.scrollTo({
-               top: scrollTop,
-               behavior: 'smooth'
-           });
+           if (cardRect.height > 0) {
+               const scrollTop = container.scrollTop + (cardRect.top - containerRect.top) - (containerRect.height / 2) + (cardRect.height / 2);
+               
+               container.scrollTo({
+                   top: scrollTop,
+                   behavior: 'smooth'
+               });
+           }
        }
    }
    
@@ -118,7 +124,7 @@ if (card) {
 }
 });
 });
-}, 150);
+}, isRemote ? 50 : 150);
 }
 
 function generatePairingPillHtml(pillName, traineeName, volName, isTraineeGoneHome = false) {
@@ -529,11 +535,19 @@ pendingPairingUpdates[updateIndex].volPaired = trainee.volPaired;
 pendingPairingUpdates.push({ traineeName: traineeName, volPaired: trainee.volPaired });
 }
 
+if (typeof window.collabSend === 'function') {
+window.collabSend({
+type: 'live:pairing',
+sheetUrl: currentManualPairingSheetUrl,
+updates: [{ traineeName: traineeName, volPaired: trainee.volPaired }]
+});
+}
+
 updatePairingCardDOM(volName, 'VOLUNTEER');
 updatePairingCardDOM(traineeName, 'TRAINEE');
 updateGlobalUnpairedCount();
 
-triggerManualPairingPulse(sourceName, targetName, true);
+triggerManualPairingPulse(sourceName, targetName, true, false);
 triggerManualPairingSync();
 } else {
 showFlashMessage('pairingGlobalStatus', "Already paired!", 'error');
@@ -559,11 +573,19 @@ pendingPairingUpdates[updateIndex].volPaired = trainee.volPaired;
 pendingPairingUpdates.push({ traineeName: traineeName, volPaired: trainee.volPaired });
 }
 
+if (typeof window.collabSend === 'function') {
+window.collabSend({
+type: 'live:pairing',
+sheetUrl: currentManualPairingSheetUrl,
+updates: [{ traineeName: traineeName, volPaired: trainee.volPaired }]
+});
+}
+
 updatePairingCardDOM(volName, 'VOLUNTEER');
 updatePairingCardDOM(traineeName, 'TRAINEE');
 updateGlobalUnpairedCount();
 
-triggerManualPairingPulse(traineeName, volName, false);
+triggerManualPairingPulse(traineeName, volName, false, false);
 triggerManualPairingSync();
 }
 
@@ -599,7 +621,7 @@ setManualPairingSyncButtonState('saving');
 if (manualPairingSyncTimeout) clearTimeout(manualPairingSyncTimeout);
 manualPairingSyncTimeout = setTimeout(() => {
 executeManualPairingSync();
-}, 800); 
+}, 250); 
 }
 
 async function executeManualPairingSync() {
@@ -783,3 +805,152 @@ closeQuickPairModal();
 listEl.appendChild(li);
 });
 }
+
+// ==========================================
+// REAL-TIME COLLABORATIVE WEBSOCKET LISTENERS
+// ==========================================
+(function initPairingRealtimeListeners() {
+if (typeof window.collabOn !== 'function') return;
+
+// 1. Live Pairing Deltas from Collaborators
+window.collabOn('delta:pairing', (msg) => {
+if (msg.senderId && msg.senderId === window.collabClientId) return;
+if (!currentManualPairingSheetUrl || msg.sheetUrl !== currentManualPairingSheetUrl) return;
+if (!Array.isArray(msg.updates) || !manualPairingData || !manualPairingData.trainees) return;
+
+let anyChanged = false;
+msg.updates.forEach(u => {
+if (pendingPairingUpdates.some(p => p.traineeName === u.traineeName)) return;
+const trainee = manualPairingData.trainees.find(t => t.name === u.traineeName);
+if (!trainee || trainee.volPaired === u.volPaired) return;
+
+const oldVols = trainee.volPaired ? trainee.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+const newVols = u.volPaired ? u.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+trainee.volPaired = u.volPaired;
+anyChanged = true;
+
+const allAffectedVols = new Set([...oldVols, ...newVols]);
+const isPaired = newVols.length >= oldVols.length;
+
+allAffectedVols.forEach(vName => {
+const matchedVol = (manualPairingData.volunteers || []).find(v => v.name.toLowerCase() === vName.toLowerCase());
+const canonicalVolName = matchedVol ? matchedVol.name : vName;
+updatePairingCardDOM(canonicalVolName, 'VOLUNTEER');
+triggerManualPairingPulse(u.traineeName, canonicalVolName, isPaired, true);
+});
+
+updatePairingCardDOM(u.traineeName, 'TRAINEE');
+});
+
+if (anyChanged) {
+updateGlobalUnpairedCount();
+const qpModal = document.getElementById('quickPairModal');
+if (qpModal && !qpModal.classList.contains('hidden')) {
+filterQuickPairList();
+}
+}
+});
+
+// 2. Live Gone Home / Attendance Deltas from Tracker
+window.collabOn('delta:commAttendance', (msg) => {
+if (!currentManualPairingSheetUrl || msg.sheetUrl !== currentManualPairingSheetUrl) return;
+if (!msg.multipleUpdates || !msg.multipleUpdates['__GONE_HOME__'] || !manualPairingData.trainees) return;
+
+let changed = false;
+msg.multipleUpdates['__GONE_HOME__'].forEach(item => {
+const trainee = manualPairingData.trainees.find(t => t.name === item.name);
+if (trainee && trainee.isGoneHome !== (item.status === true)) {
+trainee.isGoneHome = item.status === true;
+changed = true;
+updatePairingCardDOM(trainee.name, 'TRAINEE');
+if (trainee.volPaired) {
+const vols = trainee.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v);
+vols.forEach(vName => {
+const matchedVol = (manualPairingData.volunteers || []).find(v => v.name.toLowerCase() === vName.toLowerCase());
+if (matchedVol) updatePairingCardDOM(matchedVol.name, 'VOLUNTEER');
+});
+}
+}
+});
+if (changed) {
+updateGlobalUnpairedCount();
+}
+});
+
+// 3. Live Grouping Deltas Reflected on Pairing Cards
+window.collabOn('delta:grouping', (msg) => {
+if (!currentManualPairingSheetUrl || msg.sheetUrl !== currentManualPairingSheetUrl) return;
+if (!Array.isArray(msg.updates) || !manualPairingData.trainees) return;
+
+msg.updates.forEach(u => {
+if (u.role === 'TRAINEE' && u.group !== undefined) {
+const trainee = manualPairingData.trainees.find(t => t.name === u.name);
+if (trainee && String(trainee.group || '') !== String(u.group || '')) {
+trainee.group = u.group;
+updatePairingCardDOM(trainee.name, 'TRAINEE');
+}
+}
+});
+});
+
+// 4. Live Person Details / Attendance Updates
+window.collabOn('delta:personAttendance', (msg) => {
+if (!currentManualPairingSheetUrl || msg.sheetUrl !== currentManualPairingSheetUrl) return;
+if (!manualPairingData) return;
+
+const targetName = msg.targetName;
+const data = msg.data || {};
+const role = String(msg.personType || '').toUpperCase();
+const arr = role === 'VOLUNTEER' ? manualPairingData.volunteers : manualPairingData.trainees;
+if (!arr || !targetName) return;
+
+const person = arr.find(p => p.name === targetName);
+if (person) {
+if (!person.extra) person.extra = {};
+for (const k in data) {
+const val = data[k];
+const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+if (cleanK.includes('attending')) person.attending = String(val).toLowerCase().trim();
+else if (cleanK.includes('caregiver')) person.caregivers = parseInt(val, 10) || 0;
+else if (cleanK.includes('vol') && cleanK.includes('paired')) person.volPaired = val;
+else if (cleanK.includes('remark')) { person.extra.remark = val; person.extra.remarks = val; }
+else if (cleanK.includes('11') || cleanK.includes('oneonone')) person.extra.t_one_on_one = val;
+person.extra[k] = val;
+}
+updatePairingCardDOM(targetName, role);
+updateGlobalUnpairedCount();
+}
+});
+
+// 5. Full Authoritative Pairing State Broadcast
+window.collabOn('state:manualPairing', (msg) => {
+if (!currentManualPairingSheetUrl || msg.sheetUrl !== currentManualPairingSheetUrl) return;
+if (!msg.data || isManualPairingSyncing || pendingPairingUpdates.length > 0) return;
+if (window.dndState && (window.dndState.el || window.dndState.isDragging)) return;
+if (!document.getElementById('dnd-source-pool')) return;
+
+const newDataStr = JSON.stringify(msg.data);
+const oldDataStr = JSON.stringify(manualPairingData);
+if (newDataStr !== oldDataStr) {
+manualPairingData = msg.data;
+renderManualPairings();
+}
+});
+
+// 6. Reconnect / Wake Sync
+window.collabOn('collab:reconnected', () => {
+if (currentManualPairingSheetUrl && document.getElementById('dnd-source-pool')) {
+if (typeof window.collabSetContext === 'function') {
+window.collabSetContext('pairing', currentManualPairingSheetUrl);
+}
+if (!isManualPairingSyncing && pendingPairingUpdates.length === 0) {
+apiCall('fetchManualPairingData', { sheetUrl: currentManualPairingSheetUrl }).then(res => {
+if (res && res.success && !isManualPairingSyncing && pendingPairingUpdates.length === 0) {
+manualPairingData = res.data;
+renderManualPairings();
+}
+});
+}
+}
+});
+})();

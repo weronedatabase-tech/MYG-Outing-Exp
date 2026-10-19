@@ -671,6 +671,10 @@ function showPersonInfo(personObj) {
      window.initInfoPairing(pairedVal, sheetUrl);
  }
 
+ if (typeof window.collabEmitFocus === 'function') {
+     window.collabEmitFocus({ name: nameStr, role: role, action: 'editing' });
+ }
+
  const infoModal = document.getElementById('personInfoModal');
  if(infoModal) infoModal.classList.remove('hidden');
 }
@@ -679,7 +683,161 @@ function closePersonInfoModal() {
  const infoModal = document.getElementById('personInfoModal');
  if(infoModal) infoModal.classList.add('hidden');
  window.lastPersonObj = null;
+ if (typeof window.collabEmitFocus === 'function') {
+     window.collabEmitFocus(null);
+ }
 }
+
+window.applyLocalOrRemotePersonUpdate = function(sheetUrl, roleRaw, targetName, dataObj, isRemote = false) {
+ if (!targetName || !dataObj) return;
+ const role = String(roleRaw || 'trainee').toUpperCase();
+ const normName = String(targetName).toLowerCase().trim();
+
+ const att = dataObj["Attending (Y/N)"] !== undefined ? String(dataObj["Attending (Y/N)"]).toLowerCase().trim() : undefined;
+ const meet = dataObj["Meeting Location"] !== undefined ? String(dataObj["Meeting Location"]).trim() : undefined;
+ const dis = dataObj["Dismissal Location"] !== undefined ? String(dataObj["Dismissal Location"]).trim() : undefined;
+ const group = dataObj["Outing Grouping"] !== undefined ? String(dataObj["Outing Grouping"]).trim() : (dataObj["Group"] !== undefined ? String(dataObj["Group"]).trim() : undefined);
+ const pairing = dataObj["Vol Paired"] !== undefined ? String(dataObj["Vol Paired"]).trim() : undefined;
+
+ // 1. Live Tracker (commAttData)
+ if (typeof commAttData !== 'undefined' && commAttData && Array.isArray(commAttData.participants)) {
+     if (!sheetUrl || !currentCommAttSheetUrl || sheetUrl === currentCommAttSheetUrl) {
+         if (role === 'TRAINEE') {
+             let p = commAttData.participants.find(x => x.name.toLowerCase().trim() === normName);
+             if (att === 'n' || att === '') {
+                 if (p) {
+                     commAttData.participants = commAttData.participants.filter(x => x.name.toLowerCase().trim() !== normName);
+                     if (typeof renderCommAttFilters === 'function') renderCommAttFilters();
+                     if (typeof renderCommAttLists === 'function') renderCommAttLists();
+                     if (typeof renderBusLists === 'function' && !document.getElementById('busTrackerModal')?.classList.contains('hidden')) renderBusLists();
+                 }
+             } else {
+                 let wasAdded = false;
+                 if (!p && (att === 'y' || att === undefined)) {
+                     p = {
+                         name: targetName,
+                         group: group || "",
+                         caregivers: 0,
+                         volPaired: pairing || "",
+                         meetingLoc: meet || "",
+                         dismissalLoc: dis || "",
+                         extra: { role: 'TRAINEE' }
+                     };
+                     commAttData.participants.push(p);
+                     wasAdded = true;
+                 }
+                 if (p) {
+                     if (group !== undefined) { p.group = group; if (p.extra) p.extra.t_group = group; }
+                     if (pairing !== undefined) { p.volPaired = pairing; if (p.extra) p.extra.t_paired_vol = pairing; }
+                     if (meet !== undefined) { p.meetingLoc = meet; if (p.extra) p.extra.t_meet = meet; }
+                     if (dis !== undefined) { p.dismissalLoc = dis; if (p.extra) p.extra.t_dismiss = dis; }
+                     if (typeof renderCommAttFilters === 'function') renderCommAttFilters();
+                     if (wasAdded) {
+                         if (typeof renderCommAttLists === 'function') renderCommAttLists();
+                     } else if (typeof updateCommAttCardDOM === 'function') {
+                         updateCommAttCardDOM(p.name, isRemote);
+                         if (typeof updateCommAttCountsDOM === 'function') updateCommAttCountsDOM();
+                     }
+                     if (typeof renderBusLists === 'function' && !document.getElementById('busTrackerModal')?.classList.contains('hidden')) {
+                         renderBusLists();
+                     }
+                 }
+             }
+         } else if (role === 'VOLUNTEER' && att === 'n') {
+             let affected = [];
+             commAttData.participants.forEach(t => {
+                 if (t.volPaired && t.volPaired.toLowerCase().includes(normName)) {
+                     const vols = t.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v);
+                     t.volPaired = vols.filter(v => v.toLowerCase() !== normName).join(', ');
+                     affected.push(t.name);
+                 }
+             });
+             affected.forEach(tName => {
+                 if (typeof updateCommAttCardDOM === 'function') updateCommAttCardDOM(tName, isRemote);
+             });
+             if (affected.length > 0 && typeof updateCommAttCountsDOM === 'function') updateCommAttCountsDOM();
+         }
+     }
+ }
+
+ // 2. Manual Pairing (manualPairingData)
+ if (typeof manualPairingData !== 'undefined' && manualPairingData && Array.isArray(manualPairingData.trainees)) {
+     if (!sheetUrl || !currentManualPairingSheetUrl || sheetUrl === currentManualPairingSheetUrl) {
+         if (role === 'TRAINEE') {
+             let t = manualPairingData.trainees.find(x => x.name.toLowerCase().trim() === normName);
+             if (!t && att === 'y') {
+                 t = {
+                     name: targetName,
+                     role: 'TRAINEE',
+                     caregivers: 0,
+                     attending: 'y',
+                     volPaired: pairing || "",
+                     project: "",
+                     group: group || "",
+                     isGoneHome: false,
+                     extra: { role: 'TRAINEE' }
+                 };
+                 manualPairingData.trainees.push(t);
+             }
+             if (t) {
+                 if (att !== undefined) { t.attending = att; if (att === 'n') t.volPaired = ""; }
+                 if (group !== undefined) { t.group = group; if (t.extra) t.extra.t_group = group; }
+                 if (pairing !== undefined && att !== 'n') { t.volPaired = pairing; if (t.extra) t.extra.t_paired_vol = pairing; }
+                 if (meet !== undefined && t.extra) t.extra.t_meet = meet;
+                 if (dis !== undefined && t.extra) t.extra.t_dismiss = dis;
+                 if (typeof renderManualPairings === 'function') renderManualPairings();
+             }
+         } else if (role === 'VOLUNTEER') {
+             let v = manualPairingData.volunteers.find(x => x.name.toLowerCase().trim() === normName);
+             if (att === 'n' || att === '') {
+                 manualPairingData.volunteers = manualPairingData.volunteers.filter(x => x.name.toLowerCase().trim() !== normName);
+                 if (att === 'n') {
+                     manualPairingData.trainees.forEach(t => {
+                         if (t.volPaired && t.volPaired.toLowerCase().includes(normName)) {
+                             const vols = t.volPaired.split(/[,|\n]+/).map(x => x.trim()).filter(x => x);
+                             t.volPaired = vols.filter(x => x.toLowerCase() !== normName).join(', ');
+                         }
+                     });
+                 }
+             } else {
+                 if (!v) {
+                     v = { name: targetName, role: 'VOLUNTEER', project: dataObj["Project"] || "", extra: { role: 'VOLUNTEER' } };
+                     manualPairingData.volunteers.push(v);
+                 }
+                 if (meet !== undefined && v.extra) v.extra.v_meet = meet;
+                 if (dis !== undefined && v.extra) v.extra.v_dismiss = dis;
+                 if (group !== undefined && v.extra) v.extra.v_group = group;
+             }
+             if (typeof renderManualPairings === 'function') renderManualPairings();
+         }
+     }
+ }
+
+ // 3. Manual Grouping (groupingData)
+ if (typeof groupingData !== 'undefined' && groupingData && Array.isArray(groupingData.trainees)) {
+     if (!sheetUrl || !currentGroupingSheetUrl || sheetUrl === currentGroupingSheetUrl) {
+         if (role === 'TRAINEE') {
+             let t = groupingData.trainees.find(x => x.name.toLowerCase().trim() === normName);
+             if (t) {
+                 if (att !== undefined) t.attending = att;
+                 if (group !== undefined) t.group = group;
+                 if (pairing !== undefined) t.volPaired = pairing;
+                 if (meet !== undefined && t.extra) t.extra.t_meet = meet;
+                 if (dis !== undefined && t.extra) t.extra.t_dismiss = dis;
+                 if (typeof renderGroupingList === 'function') renderGroupingList();
+             }
+         } else if (role === 'VOLUNTEER') {
+             let v = groupingData.volunteers.find(x => x.name.toLowerCase().trim() === normName);
+             if (v) {
+                 if (meet !== undefined && v.extra) v.extra.v_meet = meet;
+                 if (dis !== undefined && v.extra) v.extra.v_dismiss = dis;
+                 if (group !== undefined && v.extra) v.extra.v_group = group;
+             }
+             if (typeof renderGroupingList === 'function') renderGroupingList();
+         }
+     }
+ }
+};
 
 function submitIntegratedQuickEdit() {
  const btn = document.getElementById('infoSaveBtn');
@@ -720,33 +878,36 @@ function submitIntegratedQuickEdit() {
 
  const payload = { sheetUrl: sheetUrl, type: role.toLowerCase(), data: payloadData, targetName: name };
 
+ // 1. Optimistically apply locally & broadcast via WebSocket in 0ms
+ window.applyLocalOrRemotePersonUpdate(sheetUrl, role, name, payloadData, false);
+ if (typeof window.collabSend === 'function') {
+     window.collabSend({
+         type: 'live:personAttendance',
+         sheetUrl: sheetUrl,
+         role: role.toLowerCase(),
+         targetName: name,
+         data: payloadData
+     });
+ }
+
+ btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved!`;
+ btn.classList.replace('bg-blue-600', 'bg-green-600');
+ btn.classList.replace('border-blue-600', 'border-green-600');
+ btn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
+
+ setTimeout(() => {
+     closePersonInfoModal();
+     btn.disabled = false;
+     btn.innerHTML = `<i class="fa-solid fa-save"></i> Save Changes`;
+     btn.classList.replace('bg-green-600', 'bg-blue-600');
+     btn.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
+     btn.classList.replace('border-green-600', 'border-blue-600');
+ }, 350);
+
+ // 2. Persist in background
  apiCall('submitAttendanceData', payload).then(res => {
-     if(res.success) {
-         btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved!`;
-         btn.classList.replace('bg-blue-600', 'bg-green-600');
-         btn.classList.replace('border-blue-600', 'border-green-600');
-         btn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
-         
-         setTimeout(() => {
-             closePersonInfoModal();
-             btn.disabled = false;
-             btn.innerHTML = `<i class="fa-solid fa-save"></i> Save Changes`;
-             btn.classList.replace('bg-green-600', 'bg-blue-600');
-             btn.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
-             btn.classList.replace('border-green-600', 'border-blue-600');
-             
-             if (typeof manualSyncCommAttendance === 'function') {
-                 manualSyncCommAttendance();
-             } else if (typeof manualSyncManualPairing === 'function') {
-                 manualSyncManualPairing();
-             } else if (typeof manualSyncGrouping === 'function') {
-                 manualSyncGrouping();
-             }
-         }, 1500);
-     } else {
-         btn.disabled = false;
-         btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Save Failed`;
-         alert("Error: " + res.message);
+     if(!res || !res.success) {
+         console.error("Quick Edit sync error:", res ? res.message : "Unknown");
      }
  });
 }

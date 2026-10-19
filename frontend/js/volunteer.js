@@ -88,6 +88,9 @@ function loadVolunteerEvents() {
           if (dateTextEl) dateTextEl.innerText = selectedItem.formattedDate || "N/A";
           
           if (oldUrl !== newUrl) {
+              if (typeof window.collabSetContext === 'function') {
+                  window.collabSetContext('volunteer', newUrl);
+              }
               if (typeof resetVolForm === 'function') resetVolForm();
               preloadNames(newUrl);
           }
@@ -637,6 +640,17 @@ setTimeout(() => { closeOverlay(); }, 1200);
 
 const payload = { sheetUrl: url, type: payloadType, data: deltaObj, targetName: target }; 
 
+// Instant WebSocket broadcast so Tracker, Pairing, Grouping, and other Volunteer tabs update immediately
+if (typeof window.collabSend === 'function') {
+    window.collabSend({
+        type: 'live:personAttendance',
+        sheetUrl: url,
+        personType: payloadType,
+        targetName: target,
+        data: deltaObj
+    });
+}
+
 // Background sync (Fire and forget)
 apiCall("submitAttendanceData", payload).then(res => { 
 if(res.success) {
@@ -655,3 +669,50 @@ if(res.success) {
 }
 }).catch(e => console.error("Sync Error", e));
 }
+
+// ==========================================
+// REAL-TIME COLLABORATIVE WEBSOCKET LISTENERS
+// ==========================================
+(function initVolunteerRealtimeListeners() {
+if (typeof window.collabOn !== 'function') return;
+
+window.collabOn('delta:personAttendance', (msg) => {
+const currentUrl = document.getElementById('volSheetSelector')?.value;
+if (!currentUrl || msg.sheetUrl !== currentUrl) return;
+
+const pType = String(msg.personType || '').toLowerCase();
+const tName = msg.targetName;
+if (!tName) return;
+
+// Add newly added volunteer/trainee name to live search lists immediately
+if (preloadedNames[pType] && !preloadedNames[pType].includes(tName)) {
+preloadedNames[pType].push(tName);
+preloadedNames[pType].sort();
+if (currentVolTypeRequest === pType && Array.isArray(allNames) && !allNames.includes(tName)) {
+allNames.push(tName);
+allNames.sort();
+}
+}
+
+// Invalidate or patch local personDataCache for that person so next lookup is fresh
+const cacheKey = `${pType}_${tName}`;
+delete personDataCache[cacheKey];
+delete personDataCache[`${pType}_NEW`];
+});
+
+window.collabOn('delta:pairing', (msg) => {
+const currentUrl = document.getElementById('volSheetSelector')?.value;
+if (!currentUrl || msg.sheetUrl !== currentUrl) return;
+if (Array.isArray(msg.updates)) {
+msg.updates.forEach(u => {
+delete personDataCache[`trainee_${u.traineeName}`];
+});
+}
+});
+
+window.collabOn('state:manualPairing', (msg) => {
+const currentUrl = document.getElementById('volSheetSelector')?.value;
+if (!currentUrl || msg.sheetUrl !== currentUrl) return;
+personDataCache = {};
+});
+})();

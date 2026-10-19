@@ -81,3 +81,20 @@ apiCall('changeAdminPassword', { currentPassword: currentPwd, newPassword: newPw
     }
 });
 }
+
+(function initSettingsRealtimeListeners() {
+if (typeof window.collabOn !== 'function') return;
+window.collabOn('global:settingsUpdated', (msg) => {
+    if (msg.senderId && msg.senderId === window.collabClientId) return;
+    if (msg.settings && document.getElementById('traineeColsContainer')) {
+        window.appSettings = msg.settings;
+        document.querySelectorAll('.t-col-check').forEach(cb => {
+            cb.checked = !msg.settings.traineeCols || msg.settings.traineeCols.length === 0 || msg.settings.traineeCols.includes(cb.value);
+        });
+        document.querySelectorAll('.v-col-check').forEach(cb => {
+            cb.checked = !msg.settings.volCols || msg.settings.volCols.length === 0 || msg.settings.volCols.includes(cb.value);
+        });
+        showFlashMessage('settingsStatus', "Settings updated live by another collaborator.", 'success');
+    }
+});
+})();

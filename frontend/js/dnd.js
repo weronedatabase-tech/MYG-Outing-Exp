@@ -90,6 +90,14 @@ if (!window.dndInitialized) {
                
                dndState.el.classList.add('locked-for-drag');
                
+               if (typeof window.collabEmitFocus === 'function') {
+                   window.collabEmitFocus({
+                       name: dndState.el.dataset.name,
+                       role: dndState.el.dataset.role,
+                       action: 'moving'
+                   });
+               }
+               
                // Generate visually identical clone
                dndState.clone = dndState.nameNode.cloneNode(true);
                dndState.clone.classList.add('dragging-clone');
@@ -137,6 +145,10 @@ if (!window.dndInitialized) {
            dndState.clone.remove(); 
            dndState.clone = null; 
            dndState.isDragging = false;
+           
+           if (typeof window.collabEmitFocus === 'function') {
+               window.collabEmitFocus(null);
+           }
            
            document.querySelectorAll('.dnd-dropzone').forEach(dz => dz.classList.remove('border-primary', 'bg-blue-50', 'dark:bg-blue-900/30', 'ring-1', 'ring-primary'));
            

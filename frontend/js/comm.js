@@ -12,6 +12,7 @@ searchQuery: ""
 let busState = {
 currentJuncture: null,
 busOptions: ['Bus 1'], // Default to one bus
+busOptionsByJuncture: {},
 searchQuery: ""
 };
 
@@ -303,17 +304,17 @@ if (container) {
 fetchBatchStats();
 }
 
-function fetchOutingStats(url, index) {
-return apiCall('getOutingDetails', url).then(res => {
+function renderOutingStatsIntoCard(res, index) {
 const container = document.getElementById(`stats-${index}`);
 const btnGroup = document.getElementById(`btn-group-${index}`);
-if(res.success) {
+if (!container) return;
+if(res && res.success) {
 outingDetailsCache[index] = { config: res.outingConfig, message: res.outingMessage };
 
 let html = '<table class="w-full text-[10px] md:text-xs text-left border-collapse"><tr class="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-zinc-700"><th class="pb-1">Proj</th><th class="text-center pb-1">Trainees</th><th class="text-center pb-1">CG</th><th class="text-center pb-1">Vols</th></tr>';
 
 let total_tY = 0, total_tTot = 0, total_cY = 0, total_vY = 0, total_vTot = 0;
-const sortedKeys = Object.keys(res.stats).sort();
+const sortedKeys = Object.keys(res.stats || {}).sort();
 
 for(const proj of sortedKeys) {
 total_tY += res.stats[proj].tY;
@@ -356,9 +357,14 @@ msg = "Great news! All trainees have updated their attendance.\n\nVolunteers ple
 outingReminders[index] = msg;
 if(btnGroup) btnGroup.classList.remove('hidden');
 } else {
-container.innerHTML = `<span class="text-red-500 dark:text-red-400" title="${res.message || 'Unknown error'}">Error loading stats</span>`;
+container.innerHTML = `<span class="text-red-500 dark:text-red-400" title="${(res && res.message) || 'Unknown error'}">Error loading stats</span>`;
 container.classList.remove('animate-pulse');
 }
+}
+
+function fetchOutingStats(url, index) {
+return apiCall('getOutingDetails', url).then(res => {
+renderOutingStatsIntoCard(res, index);
 });
 }
 
@@ -582,10 +588,17 @@ function loadCommAttendanceData() {
 const overlay = document.getElementById('commAttLoadingOverlay');
 overlay.classList.remove('hidden');
 
+if (typeof window.collabSetContext === 'function') {
+window.collabSetContext('tracker', currentCommAttSheetUrl);
+}
+
 apiCall('fetchCommAttendance', { sheetUrl: currentCommAttSheetUrl }).then(res => {
 overlay.classList.add('hidden');
 if (res.success) {
 commAttData = res;
+if (res.busOptions && typeof res.busOptions === 'object') {
+busState.busOptionsByJuncture = Object.assign({}, busState.busOptionsByJuncture, res.busOptions);
+}
 ensureMeetingJuncture();
 renderCommAttFilters();
 renderCommAttJunctures();
@@ -951,7 +964,7 @@ ${locHtml}
 }
 
 // TARGETED OPTIMISTIC UI LOGIC
-function updateCommAttCardDOM(name) {
+function updateCommAttCardDOM(name, isRemote = false) {
 const p = (commAttData.participants || []).find(x => x.name === name);
 if (!p) return;
 
@@ -969,9 +982,10 @@ if (isGoneHome) targetListId = 'commAttGoneHomeList';
 else if (isChecked) targetListId = 'commAttCheckedList';
 
 const targetList = document.getElementById(targetListId);
+if (!targetList) return;
 let pulseClass = isGoneHome ? 'pulse-blue' : (isChecked ? 'pulse-green' : 'pulse-red');
 
-if (existingCard) {
+if (existingCard && existingCard.parentElement) {
 const currentListId = existingCard.parentElement.id;
 if (currentListId === targetListId) {
 existingCard.outerHTML = newHtml;
@@ -1017,10 +1031,12 @@ newNode.style.transform = 'translateY(0)';
 updateCommAttCountsDOM();
 rebindCommAttCard(cardId, p);
 
+if (!isRemote) {
 scrollCardIntoViewLocally(newNode);
+}
 setTimeout(() => {
  applyCardPulse(newNode, pulseClass);
-}, 400); // Trigger pulse exactly when smooth scroll lands
+}, isRemote ? 100 : 400);
 }, 300);
 }
 }
@@ -1117,7 +1133,7 @@ function triggerSync() {
 if (commAttSyncTimeout) clearTimeout(commAttSyncTimeout);
 commAttSyncTimeout = setTimeout(() => {
 executeCommAttSync();
-}, 800);
+}, 250);
 }
 
 function toggleCommAttStatus(name, forceState, e) {
@@ -1127,9 +1143,19 @@ lastCommAttLocalChange = Date.now();
 const juncture = commAttState.currentJuncture;
 if (!juncture) return;
 
+if (!commAttData.attendance[juncture]) commAttData.attendance[juncture] = {};
 commAttData.attendance[juncture][name] = forceState;
 if (!pendingCommAttUpdates[juncture]) pendingCommAttUpdates[juncture] = {};
 pendingCommAttUpdates[juncture][name] = forceState;
+
+// Instant WebSocket broadcast to all collaborators
+if (typeof window.collabSend === 'function') {
+window.collabSend({
+type: 'live:commAttendance',
+sheetUrl: currentCommAttSheetUrl,
+multipleUpdates: { [juncture]: [{ name: name, status: forceState }] }
+});
+}
 
 if (commAttState.searchQuery) {
 commAttState.searchQuery = "";
@@ -1146,7 +1172,7 @@ setTimeout(() => {
  }
 }, 50);
 } else {
-updateCommAttCardDOM(name);
+updateCommAttCardDOM(name, false);
 }
 triggerSync();
 }
@@ -1155,12 +1181,22 @@ function toggleGoneHomeStatus(name, forceState, e) {
 if(e) e.stopPropagation();
 
 lastCommAttLocalChange = Date.now();
+const juncture = commAttState.currentJuncture;
 if (!commAttData.attendance['__GONE_HOME__']) commAttData.attendance['__GONE_HOME__'] = {};
 
 commAttData.attendance['__GONE_HOME__'][name] = forceState;
 
 if (!pendingCommAttUpdates['__GONE_HOME__']) pendingCommAttUpdates['__GONE_HOME__'] = {};
 pendingCommAttUpdates['__GONE_HOME__'][name] = forceState;
+
+// Instant WebSocket broadcast to all collaborators
+if (typeof window.collabSend === 'function') {
+window.collabSend({
+type: 'live:commAttendance',
+sheetUrl: currentCommAttSheetUrl,
+multipleUpdates: { '__GONE_HOME__': [{ name: name, status: forceState }] }
+});
+}
 
 if (commAttState.searchQuery) {
 commAttState.searchQuery = "";
@@ -1177,7 +1213,7 @@ setTimeout(() => {
  }
 }, 50);
 } else {
-updateCommAttCardDOM(name);
+updateCommAttCardDOM(name, false);
 }
 triggerSync();
 }
@@ -1545,13 +1581,17 @@ if(select) busState.currentJuncture = select.value;
 if(!busState.currentJuncture) return;
 
 const usedBuses = new Set(['Bus 1']);
+if (busState.busOptionsByJuncture && Array.isArray(busState.busOptionsByJuncture[busState.currentJuncture])) {
+busState.busOptionsByJuncture[busState.currentJuncture].forEach(b => usedBuses.add(b));
+}
 if (commAttData.busAttendance[busState.currentJuncture]) {
 for(let t in commAttData.busAttendance[busState.currentJuncture]) {
 const val = commAttData.busAttendance[busState.currentJuncture][t];
 if (val) usedBuses.add(val);
 }
 }
-busState.busOptions = Array.from(usedBuses).sort();
+busState.busOptions = Array.from(usedBuses).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+busState.busOptionsByJuncture[busState.currentJuncture] = [...busState.busOptions];
 
 renderBusFilterOptions();
 renderBusLists();
@@ -1560,17 +1600,40 @@ renderBusLists();
 function renderBusFilterOptions() {
 const select = document.getElementById('busFilterSelect');
 if(!select) return;
+const prevVal = select.value;
 select.innerHTML = '<option value="ALL">All Buses</option>';
 busState.busOptions.forEach(b => {
 select.innerHTML += `<option value="${b}">${b}</option>`;
 });
+if (prevVal && (prevVal === 'ALL' || busState.busOptions.includes(prevVal))) {
+select.value = prevVal;
+}
 }
 
 function addBusOption() {
-const num = busState.busOptions.length + 1;
-busState.busOptions.push(`Bus ${num}`);
+let maxNum = 0;
+busState.busOptions.forEach(b => {
+const m = String(b).match(/Bus\s+(\d+)/i);
+if (m && parseInt(m[1], 10) > maxNum) maxNum = parseInt(m[1], 10);
+});
+const num = Math.max(busState.busOptions.length + 1, maxNum + 1);
+const newBusName = `Bus ${num}`;
+if (!busState.busOptions.includes(newBusName)) {
+busState.busOptions.push(newBusName);
+}
+if (busState.currentJuncture) {
+busState.busOptionsByJuncture[busState.currentJuncture] = [...busState.busOptions];
+if (typeof window.collabSend === 'function') {
+window.collabSend({
+type: 'live:busOptions',
+sheetUrl: currentCommAttSheetUrl,
+juncture: busState.currentJuncture,
+busOptions: busState.busOptions
+});
+}
+}
 renderBusFilterOptions();
-document.getElementById('busFilterSelect').value = `Bus ${num}`;
+document.getElementById('busFilterSelect').value = newBusName;
 renderBusLists();
 }
 
@@ -1589,9 +1652,12 @@ return;
 }
 
 busState.busOptions = busState.busOptions.filter(b => b !== filterBus);
+if (busState.busOptions.length === 0) busState.busOptions = ['Bus 1'];
+busState.busOptionsByJuncture[juncture] = [...busState.busOptions];
 
 let hasChanges = false;
 const juncKey = '__BUS__' + juncture;
+const liveUnassigned = [];
 
 if (commAttData.busAttendance[juncture]) {
 for (let name in commAttData.busAttendance[juncture]) {
@@ -1600,6 +1666,7 @@ commAttData.busAttendance[juncture][name] = "";
 
 if (!pendingCommAttUpdates[juncKey]) pendingCommAttUpdates[juncKey] = {};
 pendingCommAttUpdates[juncKey][name] = "";
+liveUnassigned.push({ name: name, status: "" });
 
 hasChanges = true;
 }
@@ -1607,6 +1674,22 @@ hasChanges = true;
 }
 
 lastCommAttLocalChange = Date.now();
+
+if (typeof window.collabSend === 'function') {
+window.collabSend({
+type: 'live:busOptions',
+sheetUrl: currentCommAttSheetUrl,
+juncture: juncture,
+busOptions: busState.busOptions
+});
+if (liveUnassigned.length > 0) {
+window.collabSend({
+type: 'live:commAttendance',
+sheetUrl: currentCommAttSheetUrl,
+multipleUpdates: { [juncKey]: liveUnassigned }
+});
+}
+}
 
 renderBusFilterOptions();
 document.getElementById('busFilterSelect').value = 'ALL';
@@ -1765,12 +1848,14 @@ ${volHtml ? `<div class="flex flex-col gap-1 w-full">${volHtml}</div>` : ''}
 </div>`;
 }
 
-function updateBusCardDOM(name) {
+function updateBusCardDOM(name, isRemote = false) {
 const p = (commAttData.participants || []).find(x => x.name === name);
 if (!p) return;
 
 const juncture = busState.currentJuncture;
-const filterBus = document.getElementById('busFilterSelect').value;
+const filterSelect = document.getElementById('busFilterSelect');
+if (!filterSelect || !juncture) return;
+const filterBus = filterSelect.value;
 const currentBus = commAttData.busAttendance[juncture] ? commAttData.busAttendance[juncture][p.name] : "";
 const isBoarded = !!currentBus;
 
@@ -1790,8 +1875,9 @@ return;
 }
 
 const targetList = document.getElementById(targetListId);
+if (!targetList) return;
 
-if (existingCard) {
+if (existingCard && existingCard.parentElement) {
 const currentListId = existingCard.parentElement.id;
 if (currentListId === targetListId) {
 existingCard.outerHTML = newHtml;
@@ -1825,10 +1911,12 @@ newNode.style.transform = 'translateY(0)';
 updateBusCountsDOM();
 rebindCommAttCard(cardId, p);
 
+if (!isRemote) {
 scrollCardIntoViewLocally(newNode);
+}
 setTimeout(() => {
  applyCardPulse(newNode, isBoarded ? 'pulse-green' : 'pulse-red');
-}, 400);
+}, isRemote ? 100 : 400);
 }, 300);
 }
 }
@@ -1836,7 +1924,9 @@ setTimeout(() => {
 
 function updateBusCountsDOM() {
 const juncture = busState.currentJuncture;
-const filterBus = document.getElementById('busFilterSelect').value;
+const filterSelect = document.getElementById('busFilterSelect');
+if (!filterSelect || !juncture) return;
+const filterBus = filterSelect.value;
 let nb = 0, b = 0;
 
 let eligibleTrainees = getEligibleBusTrainees();
@@ -1897,6 +1987,14 @@ const juncKey = '__BUS__' + juncture;
 if (!pendingCommAttUpdates[juncKey]) pendingCommAttUpdates[juncKey] = {};
 pendingCommAttUpdates[juncKey][name] = selectedBus;
 
+if (typeof window.collabSend === 'function') {
+window.collabSend({
+type: 'live:commAttendance',
+sheetUrl: currentCommAttSheetUrl,
+multipleUpdates: { [juncKey]: [{ name: name, status: selectedBus }] }
+});
+}
+
 if (busState.searchQuery) {
 busState.searchQuery = "";
 document.getElementById('busSearchInput').value = "";
@@ -1912,7 +2010,7 @@ setTimeout(() => {
  }
 }, 50);
 } else {
-updateBusCardDOM(name);
+updateBusCardDOM(name, false);
 }
 triggerSync();
 }
@@ -2024,3 +2122,261 @@ text: finalMessage
 copyBusColumnData(columnType);
 }
 }
+
+// ==========================================
+// REAL-TIME COLLABORATIVE WEBSOCKET LISTENERS
+// ==========================================
+(function initCommRealtimeListeners() {
+if (typeof window.collabOn !== 'function') return;
+
+// 1. Live Attendance, Gone Home, and Bus Boarding Deltas
+window.collabOn('delta:commAttendance', (msg) => {
+if (msg.senderId && msg.senderId === window.collabClientId) return;
+if (!currentCommAttSheetUrl || msg.sheetUrl !== currentCommAttSheetUrl) return;
+if (!msg.multipleUpdates || !commAttData) return;
+
+const updatedAttendanceNames = new Set();
+const updatedBusNames = new Set();
+
+for (const juncKey in msg.multipleUpdates) {
+const list = msg.multipleUpdates[juncKey] || [];
+if (juncKey.startsWith('__BUS__')) {
+const cleanBusJunc = juncKey.replace('__BUS__', '');
+if (!commAttData.busAttendance[cleanBusJunc]) commAttData.busAttendance[cleanBusJunc] = {};
+list.forEach(item => {
+if (pendingCommAttUpdates[juncKey] && pendingCommAttUpdates[juncKey][item.name] !== undefined) return;
+const val = item.status ? String(item.status).trim() : "";
+commAttData.busAttendance[cleanBusJunc][item.name] = val;
+if (val && busState.currentJuncture === cleanBusJunc && !busState.busOptions.includes(val)) {
+busState.busOptions.push(val);
+busState.busOptions.sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+renderBusFilterOptions();
+}
+if (busState.currentJuncture === cleanBusJunc) {
+updatedBusNames.add(item.name);
+}
+});
+} else {
+if (!commAttData.attendance[juncKey]) commAttData.attendance[juncKey] = {};
+list.forEach(item => {
+if (pendingCommAttUpdates[juncKey] && pendingCommAttUpdates[juncKey][item.name] !== undefined) return;
+commAttData.attendance[juncKey][item.name] = item.status === true;
+if (juncKey === commAttState.currentJuncture || juncKey === '__GONE_HOME__') {
+updatedAttendanceNames.add(item.name);
+}
+if (juncKey === '__GONE_HOME__') {
+updatedBusNames.add(item.name);
+}
+});
+}
+}
+
+updatedAttendanceNames.forEach(name => {
+const existingCard = document.getElementById(`comm-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
+if (existingCard) {
+updateCommAttCardDOM(name, true);
+} else {
+renderCommAttLists();
+}
+});
+if (updatedAttendanceNames.size > 0) {
+updateCommAttCountsDOM();
+}
+
+const busModal = document.getElementById('busTrackerModal');
+if (busModal && !busModal.classList.contains('hidden') && updatedBusNames.size > 0) {
+updatedBusNames.forEach(name => {
+const existingBusCard = document.getElementById(`bus-att-card-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
+if (existingBusCard) {
+updateBusCardDOM(name, true);
+} else {
+renderBusLists();
+}
+});
+updateBusCountsDOM();
+}
+});
+
+// 2. Live Bus Options Sync (when a collaborator adds/removes a Bus)
+window.collabOn('delta:busOptions', (msg) => {
+if (msg.senderId && msg.senderId === window.collabClientId) return;
+if (!currentCommAttSheetUrl || msg.sheetUrl !== currentCommAttSheetUrl) return;
+if (!msg.juncture || !Array.isArray(msg.busOptions)) return;
+
+busState.busOptionsByJuncture[msg.juncture] = [...msg.busOptions];
+if (busState.currentJuncture === msg.juncture) {
+busState.busOptions = [...msg.busOptions];
+renderBusFilterOptions();
+renderBusLists();
+}
+});
+
+window.collabOn('delta:busOptionsAll', (msg) => {
+if (!currentCommAttSheetUrl || msg.sheetUrl !== currentCommAttSheetUrl) return;
+if (msg.busOptions && typeof msg.busOptions === 'object') {
+busState.busOptionsByJuncture = Object.assign({}, busState.busOptionsByJuncture, msg.busOptions);
+if (busState.currentJuncture && Array.isArray(busState.busOptionsByJuncture[busState.currentJuncture])) {
+busState.busOptions = [...busState.busOptionsByJuncture[busState.currentJuncture]];
+renderBusFilterOptions();
+renderBusLists();
+}
+}
+});
+
+// 3. Live Pairing Updates Reflected on Tracker Cards
+window.collabOn('delta:pairing', (msg) => {
+if (!currentCommAttSheetUrl || msg.sheetUrl !== currentCommAttSheetUrl) return;
+if (!Array.isArray(msg.updates) || !commAttData || !commAttData.participants) return;
+
+let changed = false;
+msg.updates.forEach(u => {
+const p = commAttData.participants.find(x => x.name === u.traineeName);
+if (p && p.volPaired !== u.volPaired) {
+p.volPaired = u.volPaired;
+changed = true;
+updateCommAttCardDOM(p.name, true);
+const busModal = document.getElementById('busTrackerModal');
+if (busModal && !busModal.classList.contains('hidden')) {
+updateBusCardDOM(p.name, true);
+}
+}
+});
+if (changed) {
+updateCommAttCountsDOM();
+}
+});
+
+// 4. Live Grouping Updates Reflected on Tracker Cards
+window.collabOn('delta:grouping', (msg) => {
+if (!currentCommAttSheetUrl || msg.sheetUrl !== currentCommAttSheetUrl) return;
+if (!Array.isArray(msg.updates) || !commAttData || !commAttData.participants) return;
+
+let changed = false;
+msg.updates.forEach(u => {
+if (u.role === 'TRAINEE' && u.group !== undefined) {
+const p = commAttData.participants.find(x => x.name === u.name);
+if (p && String(p.group || '') !== String(u.group || '')) {
+p.group = u.group;
+changed = true;
+}
+}
+});
+if (changed) {
+renderCommAttFilters();
+renderCommAttLists();
+}
+});
+
+// 5. Live Person Details / Attendance Updates (from Quick Edit or Volunteer Portal)
+window.collabOn('delta:personAttendance', (msg) => {
+if (!currentCommAttSheetUrl || msg.sheetUrl !== currentCommAttSheetUrl) return;
+if (!commAttData || !commAttData.participants) return;
+
+const targetName = msg.targetName;
+const data = msg.data || {};
+const role = String(msg.personType || '').toUpperCase();
+
+if (role === 'TRAINEE' && targetName) {
+const p = commAttData.participants.find(x => x.name === targetName);
+let attChanged = false;
+for (const k in data) {
+const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+if (cleanK.includes('attending')) {
+attChanged = true;
+}
+}
+if (p && !attChanged) {
+if (!p.extra) p.extra = {};
+for (const k in data) {
+const val = data[k];
+const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+if (cleanK.includes('caregiver')) p.caregivers = parseInt(val, 10) || 0;
+else if (cleanK.includes('meetinglocation')) p.meetingLoc = val;
+else if (cleanK.includes('dismissallocation')) p.dismissalLoc = val;
+else if (cleanK.includes('vol') && cleanK.includes('paired')) p.volPaired = val;
+else if (cleanK.includes('remark')) { p.extra.remark = val; p.extra.remarks = val; }
+else if (cleanK.includes('11') || cleanK.includes('oneonone')) p.extra.t_one_on_one = val;
+p.extra[k] = val;
+}
+renderCommAttFilters();
+updateCommAttCardDOM(targetName, true);
+const busModal = document.getElementById('busTrackerModal');
+if (busModal && !busModal.classList.contains('hidden')) {
+renderBusLists();
+}
+}
+}
+});
+
+// 6. Full Authoritative Tracker State Broadcast (e.g. Junctures added/deleted, Auto-Pair/Group, Sheet edits)
+window.collabOn('state:commAttendance', (msg) => {
+if (!currentCommAttSheetUrl || msg.sheetUrl !== currentCommAttSheetUrl) return;
+if (!msg.data || isCommAttSyncing || hasPendingUpdates()) return;
+
+const view = document.getElementById('view-comm-attendance');
+if (!view || view.classList.contains('hidden')) return;
+
+const oldJunctures = JSON.stringify(commAttData.junctures);
+const oldBusJunctures = JSON.stringify(commAttData.busJunctures);
+const oldParticipants = JSON.stringify(commAttData.participants);
+const oldAttendance = JSON.stringify(commAttData.attendance);
+const oldBusAttendance = JSON.stringify(commAttData.busAttendance);
+
+commAttData = msg.data;
+if (msg.data.busOptions && typeof msg.data.busOptions === 'object') {
+busState.busOptionsByJuncture = Object.assign({}, busState.busOptionsByJuncture, msg.data.busOptions);
+}
+ensureMeetingJuncture();
+
+const newJunctures = JSON.stringify(commAttData.junctures);
+const newBusJunctures = JSON.stringify(commAttData.busJunctures);
+const newParticipants = JSON.stringify(commAttData.participants);
+const newAttendance = JSON.stringify(commAttData.attendance);
+const newBusAttendance = JSON.stringify(commAttData.busAttendance);
+
+if (oldJunctures !== newJunctures || oldParticipants !== newParticipants) {
+renderCommAttFilters();
+renderCommAttJunctures();
+} else if (oldAttendance !== newAttendance) {
+renderCommAttLists();
+}
+
+const busModal = document.getElementById('busTrackerModal');
+if (busModal && !busModal.classList.contains('hidden')) {
+if (oldBusJunctures !== newBusJunctures) {
+renderBusJunctures();
+} else if (oldBusAttendance !== newBusAttendance || oldParticipants !== newParticipants) {
+renderBusLists();
+}
+}
+});
+
+// 7. Live Admin Dashboard Outing Stats Update
+window.collabOn('delta:outingDetails', (msg) => {
+if (!msg.sheetUrl || !msg.details || !Array.isArray(currentSheetList)) return;
+const idx = currentSheetList.findIndex(item => item.sheetUrl === msg.sheetUrl);
+if (idx > -1 && document.getElementById(`stats-${idx}`)) {
+renderOutingStatsIntoCard(msg.details, idx);
+}
+});
+
+// 8. Reconnect / Wake Sync
+window.collabOn('collab:reconnected', () => {
+const view = document.getElementById('view-comm-attendance');
+if (currentCommAttSheetUrl && view && !view.classList.contains('hidden')) {
+if (typeof window.collabSetContext === 'function') {
+window.collabSetContext('tracker', currentCommAttSheetUrl);
+}
+if (!isCommAttSyncing && !hasPendingUpdates()) {
+apiCall('fetchCommAttendance', { sheetUrl: currentCommAttSheetUrl }).then(res => {
+if (res && res.success && !isCommAttSyncing && !hasPendingUpdates()) {
+commAttData = res;
+ensureMeetingJuncture();
+renderCommAttFilters();
+renderCommAttJunctures();
+}
+});
+}
+}
+});
+})();

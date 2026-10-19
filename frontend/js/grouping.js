@@ -33,6 +33,10 @@ function loadGroupingData() {
 const overlay = document.getElementById('groupingLoadingOverlay');
 if(overlay) overlay.classList.remove('hidden');
 
+if (typeof window.collabSetContext === 'function') {
+window.collabSetContext('grouping', currentGroupingSheetUrl);
+}
+
 apiCall('fetchManualPairingData', { sheetUrl: currentGroupingSheetUrl }).then(res => {
 if(overlay) overlay.classList.add('hidden');
 if (res.success) {
@@ -68,6 +72,7 @@ if (!confirm(`Are you sure you want to delete Group ${g}? All trainees will be u
 
 let changed = false;
 let volsInGroup = new Set();
+const liveUpdates = [];
 
 // 1. Unassign all trainees in this group
 (groupingData.trainees || []).forEach(t => {
@@ -80,6 +85,7 @@ if (updateIndex > -1) {
 } else {
   pendingGroupingUpdates.push({ role: 'TRAINEE', name: t.name, group: "" });
 }
+liveUpdates.push({ role: 'TRAINEE', name: t.name, group: "" });
 
 if (t.volPaired) {
   t.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v).forEach(v => volsInGroup.add(v.toLowerCase()));
@@ -98,6 +104,7 @@ if (updateIndex > -1) {
 } else {
   pendingGroupingUpdates.push({ role: 'VOLUNTEER', name: v.name, groupIC: false });
 }
+liveUpdates.push({ role: 'VOLUNTEER', name: v.name, groupIC: false });
 }
 });
 
@@ -110,6 +117,13 @@ window.extractedActiveGroups = window.extractedActiveGroups.filter(x => String(x
 lastGroupingLocalChange = Date.now();
 renderGroupingList();
 if (changed) {
+if (typeof window.collabSend === 'function') {
+window.collabSend({
+type: 'live:grouping',
+sheetUrl: currentGroupingSheetUrl,
+updates: liveUpdates
+});
+}
 triggerGroupingSync();
 }
 
@@ -315,6 +329,7 @@ lastGroupingLocalChange = Date.now();
 const connectedTrainees = getConnectedTrainees(traineeName);
 
 let changed = false;
+const liveUpdates = [];
 connectedTrainees.forEach(tName => {
 let t = groupingData.trainees.find(x => x.name === tName);
 if (t && String(t.group).trim() !== targetGroup) {
@@ -327,12 +342,21 @@ pendingGroupingUpdates[updateIndex].group = targetGroup;
 } else {
 pendingGroupingUpdates.push({ role: 'TRAINEE', name: tName, group: targetGroup });
 }
+liveUpdates.push({ role: 'TRAINEE', name: tName, group: targetGroup });
 }
 });
 
 if (changed) {
 if (targetGroup !== "" && !activeGroups.includes(targetGroup)) {
 activeGroups.push(targetGroup);
+}
+
+if (typeof window.collabSend === 'function') {
+window.collabSend({
+type: 'live:grouping',
+sheetUrl: currentGroupingSheetUrl,
+updates: liveUpdates
+});
 }
 
 if (connectedTrainees.length > 1 && targetGroup !== "") {
@@ -412,7 +436,7 @@ setGroupingSyncButtonState('saving');
 if (groupingSyncTimeout) clearTimeout(groupingSyncTimeout);
 groupingSyncTimeout = setTimeout(() => {
 executeGroupingSync();
-}, 800); 
+}, 250); 
 }
 
 async function executeGroupingSync() {
@@ -516,6 +540,9 @@ function openAssignICModal(sheetUrl) {
 if(!sheetUrl || sheetUrl.includes("Select")) return alert("Select an event first");
 
 currentGroupingSheetUrl = sheetUrl;
+if (typeof window.collabSetContext === 'function') {
+window.collabSetContext('assign-ic', currentGroupingSheetUrl);
+}
 showOverlay('loading', 'Loading Roles...');
 
 apiCall('fetchManualPairingData', { sheetUrl: sheetUrl }).then(res => {
@@ -709,6 +736,7 @@ if (v.extra && v.extra.v_dismiss && v.extra.v_dismiss.toLowerCase() === target.t
 }
 
 const newVolKey = newVolName ? newVolName.toLowerCase() : null;
+const liveUpdates = [];
 
 (groupingData.volunteers || []).forEach(v => {
 const vKey = v.name.toLowerCase();
@@ -727,12 +755,22 @@ if (changed) {
      pendingGroupingUpdates.push({ role: 'VOLUNTEER', name: v.name });
      updateIndex = pendingGroupingUpdates.length - 1;
  }
- if (type === 'group') pendingGroupingUpdates[updateIndex].groupIC = shouldBeIC;
- if (type === 'meet') pendingGroupingUpdates[updateIndex].meetIC = shouldBeIC;
- if (type === 'dismiss') pendingGroupingUpdates[updateIndex].dismissIC = shouldBeIC;
+ const liveItem = { role: 'VOLUNTEER', name: v.name };
+ if (type === 'group') { pendingGroupingUpdates[updateIndex].groupIC = shouldBeIC; liveItem.groupIC = shouldBeIC; }
+ if (type === 'meet') { pendingGroupingUpdates[updateIndex].meetIC = shouldBeIC; liveItem.meetIC = shouldBeIC; }
+ if (type === 'dismiss') { pendingGroupingUpdates[updateIndex].dismissIC = shouldBeIC; liveItem.dismissIC = shouldBeIC; }
+ liveUpdates.push(liveItem);
 }
 }
 });
+
+if (liveUpdates.length > 0 && typeof window.collabSend === 'function') {
+window.collabSend({
+type: 'live:grouping',
+sheetUrl: currentGroupingSheetUrl,
+updates: liveUpdates
+});
+}
 
 renderAssignICModal();
 triggerGroupingSync();
@@ -1146,3 +1184,140 @@ if (navigator.clipboard && window.ClipboardItem) {
 console.log('Share canceled or failed', e);
 }
 }
+
+// ==========================================
+// REAL-TIME COLLABORATIVE WEBSOCKET LISTENERS
+// ==========================================
+(function initGroupingRealtimeListeners() {
+if (typeof window.collabOn !== 'function') return;
+
+// 1. Live Grouping & IC Assignment Deltas
+window.collabOn('delta:grouping', (msg) => {
+if (msg.senderId && msg.senderId === window.collabClientId) return;
+if (!currentGroupingSheetUrl || msg.sheetUrl !== currentGroupingSheetUrl) return;
+if (!Array.isArray(msg.updates) || !groupingData) return;
+
+let changed = false;
+const pulsedTrainees = [];
+
+msg.updates.forEach(u => {
+if (pendingGroupingUpdates.some(p => p.name === u.name && p.role === u.role)) return;
+
+if (u.role === 'TRAINEE' && groupingData.trainees) {
+const t = groupingData.trainees.find(x => x.name === u.name);
+if (t && u.group !== undefined && String(t.group || '') !== String(u.group || '')) {
+t.group = u.group;
+if (u.group && !activeGroups.includes(String(u.group))) {
+activeGroups.push(String(u.group));
+}
+changed = true;
+pulsedTrainees.push(u.name);
+}
+} else if (u.role === 'VOLUNTEER' && groupingData.volunteers) {
+const v = groupingData.volunteers.find(x => x.name === u.name);
+if (v) {
+if (u.groupIC !== undefined) { v.groupIC = u.groupIC; changed = true; }
+if (u.meetIC !== undefined) { v.meetIC = u.meetIC; changed = true; }
+if (u.dismissIC !== undefined) { v.dismissIC = u.dismissIC; changed = true; }
+}
+}
+});
+
+if (changed) {
+if (document.getElementById('groupingList')) {
+renderGroupingList();
+pulsedTrainees.forEach(tName => {
+const cardId = `grouping-card-${tName.replace(/[^a-zA-Z0-9]/g, '')}`;
+const card = document.getElementById(cardId);
+if (card) {
+card.classList.add('pulse-green');
+setTimeout(() => card.classList.remove('pulse-green'), 800);
+}
+});
+}
+const icModal = document.getElementById('assignICModal');
+if (icModal && !icModal.classList.contains('hidden')) {
+renderAssignICModal();
+}
+const exportModal = document.getElementById('exportTableModal');
+const exportContainer = document.getElementById('exportTableContainer');
+if (exportModal && !exportModal.classList.contains('hidden') && exportContainer && !exportContainer.classList.contains('hidden')) {
+buildExportTable();
+}
+}
+});
+
+// 2. Live Pairing Deltas Reflected on Grouping View & IC Modal
+window.collabOn('delta:pairing', (msg) => {
+if (!currentGroupingSheetUrl || msg.sheetUrl !== currentGroupingSheetUrl) return;
+if (!Array.isArray(msg.updates) || !groupingData || !groupingData.trainees) return;
+
+let changed = false;
+msg.updates.forEach(u => {
+const t = groupingData.trainees.find(x => x.name === u.traineeName);
+if (t && t.volPaired !== u.volPaired) {
+t.volPaired = u.volPaired;
+changed = true;
+}
+});
+if (changed) {
+if (document.getElementById('groupingList')) renderGroupingList();
+const icModal = document.getElementById('assignICModal');
+if (icModal && !icModal.classList.contains('hidden')) renderAssignICModal();
+}
+});
+
+// 3. Live Gone Home Deltas from Tracker
+window.collabOn('delta:commAttendance', (msg) => {
+if (!currentGroupingSheetUrl || msg.sheetUrl !== currentGroupingSheetUrl) return;
+if (!msg.multipleUpdates || !msg.multipleUpdates['__GONE_HOME__'] || !groupingData.trainees) return;
+
+let changed = false;
+msg.multipleUpdates['__GONE_HOME__'].forEach(item => {
+const t = groupingData.trainees.find(x => x.name === item.name);
+if (t && t.isGoneHome !== (item.status === true)) {
+t.isGoneHome = item.status === true;
+changed = true;
+}
+});
+if (changed && document.getElementById('groupingList')) {
+renderGroupingList();
+}
+});
+
+// 4. Full Authoritative State Broadcast
+window.collabOn('state:manualPairing', (msg) => {
+if (!currentGroupingSheetUrl || msg.sheetUrl !== currentGroupingSheetUrl) return;
+if (!msg.data || isGroupingSyncing || pendingGroupingUpdates.length > 0) return;
+
+const newDataStr = JSON.stringify(msg.data);
+const oldDataStr = JSON.stringify(groupingData);
+if (newDataStr !== oldDataStr) {
+groupingData = msg.data;
+if (document.getElementById('groupingList')) {
+renderGroupingList();
+}
+const icModal = document.getElementById('assignICModal');
+if (icModal && !icModal.classList.contains('hidden')) {
+renderAssignICModal();
+}
+}
+});
+
+// 5. Reconnect / Wake Sync
+window.collabOn('collab:reconnected', () => {
+if (currentGroupingSheetUrl && document.getElementById('groupingList')) {
+if (typeof window.collabSetContext === 'function') {
+window.collabSetContext('grouping', currentGroupingSheetUrl);
+}
+if (!isGroupingSyncing && pendingGroupingUpdates.length === 0) {
+apiCall('fetchManualPairingData', { sheetUrl: currentGroupingSheetUrl }).then(res => {
+if (res && res.success && !isGroupingSyncing && pendingGroupingUpdates.length === 0) {
+groupingData = res.data;
+renderGroupingList();
+}
+});
+}
+}
+});
+})();
