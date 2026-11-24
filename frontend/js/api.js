@@ -3,8 +3,32 @@
  * Uses API_URL globally defined in backend/config.js
  */
 
+const COLLAB_TAB_ID_KEY = 'myg_collab_tab_id';
+const COLLAB_WIN_NAME_PREFIX = 'myg_tab:';
+
 (function initCollabIdentity() {
-    window.collabClientId = 'c_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+    let existingId = null;
+    try {
+        existingId = sessionStorage.getItem(COLLAB_TAB_ID_KEY);
+    } catch (e) {}
+
+    if (!existingId && typeof window.name === 'string' && window.name.startsWith(COLLAB_WIN_NAME_PREFIX)) {
+        existingId = window.name.slice(COLLAB_WIN_NAME_PREFIX.length);
+    }
+
+    if (!existingId) {
+        existingId = 'c_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+    }
+
+    window.collabClientId = existingId;
+    try {
+        sessionStorage.setItem(COLLAB_TAB_ID_KEY, existingId);
+    } catch (e) {}
+    try {
+        if (!window.name || window.name.startsWith(COLLAB_WIN_NAME_PREFIX)) {
+            window.name = COLLAB_WIN_NAME_PREFIX + existingId;
+        }
+    } catch (e) {}
 })();
 
 window.collabState = {
@@ -22,7 +46,9 @@ window.collabState = {
     remoteFocusMap: new Map(), // key: name_lower -> { clientId, color, label, action, expiresAt }
     listeners: {},
     pendingWsQueue: [],
-    hasConnectedOnce: false
+    hasConnectedOnce: false,
+    intentionalClose: false,
+    hasSentLeave: false
 };
 
 window.collabOn = function(type, handler) {
@@ -109,9 +135,71 @@ function detectInitialContext() {
     window.collabState.label = label;
 }
 
+window.collabDisconnect = function(reason = 'unload') {
+    window.collabState.intentionalClose = true;
+
+    if (window.collabState.reconnectTimer) {
+        clearTimeout(window.collabState.reconnectTimer);
+        window.collabState.reconnectTimer = null;
+    }
+    if (window.collabState.pingInterval) {
+        clearInterval(window.collabState.pingInterval);
+        window.collabState.pingInterval = null;
+    }
+
+    const ws = window.collabState.ws;
+    window.collabState.ws = null;
+    window.collabState.connected = false;
+
+    if (ws) {
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onclose = null;
+        ws.onerror = null;
+        if (ws.readyState === WebSocket.OPEN) {
+            try {
+                ws.send(JSON.stringify({
+                    type: 'presence:leave',
+                    clientId: window.collabClientId,
+                    reason
+                }));
+            } catch (e) {}
+        }
+        try {
+            if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+                ws.close(1000, reason);
+            }
+        } catch (e) {}
+    }
+
+    if (!window.collabState.hasSentLeave && window.collabClientId) {
+        window.collabState.hasSentLeave = true;
+        try {
+            const leaveUrl = (typeof API_URL !== 'undefined' ? API_URL : '/api') + '/presence/leave';
+            const body = JSON.stringify({ clientId: window.collabClientId, reason });
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon(leaveUrl, new Blob([body], { type: 'text/plain;charset=utf-8' }));
+            }
+        } catch (e) {}
+    }
+};
+
 function connectCollabWebSocket() {
+    if (window.collabState.intentionalClose) {
+        return;
+    }
     if (window.collabState.ws && (window.collabState.ws.readyState === WebSocket.OPEN || window.collabState.ws.readyState === WebSocket.CONNECTING)) {
         return;
+    }
+
+    // Detach any stale closed/closing socket before opening a fresh one
+    if (window.collabState.ws) {
+        const oldWs = window.collabState.ws;
+        oldWs.onopen = null;
+        oldWs.onmessage = null;
+        oldWs.onclose = null;
+        oldWs.onerror = null;
+        window.collabState.ws = null;
     }
 
     detectInitialContext();
@@ -130,9 +218,14 @@ function connectCollabWebSocket() {
     window.collabState.ws = ws;
 
     ws.onopen = () => {
+        if (window.collabState.intentionalClose || window.collabState.ws !== ws) {
+            try { ws.close(1000, 'stale'); } catch (e) {}
+            return;
+        }
         const wasReconnect = window.collabState.hasConnectedOnce;
         window.collabState.connected = true;
         window.collabState.hasConnectedOnce = true;
+        window.collabState.hasSentLeave = false;
         window.collabState.reconnectDelay = 1000;
 
         // Announce presence & room context
@@ -163,7 +256,7 @@ function connectCollabWebSocket() {
             if (ws.readyState === WebSocket.OPEN) {
                 try { ws.send(JSON.stringify({ type: 'ping' })); } catch (e) {}
             }
-        }, 25000);
+        }, 15000);
     };
 
     ws.onmessage = (event) => {
@@ -189,11 +282,14 @@ function connectCollabWebSocket() {
     };
 
     ws.onclose = () => {
+        if (window.collabState.ws !== ws) return;
+        window.collabState.ws = null;
         window.collabState.connected = false;
         if (window.collabState.pingInterval) {
             clearInterval(window.collabState.pingInterval);
             window.collabState.pingInterval = null;
         }
+        if (window.collabState.intentionalClose) return;
         emitCollabLocal('connection:state', { connected: false, reconnected: false });
         scheduleReconnect();
     };
@@ -204,6 +300,7 @@ function connectCollabWebSocket() {
 }
 
 function scheduleReconnect() {
+    if (window.collabState.intentionalClose) return;
     if (window.collabState.reconnectTimer) clearTimeout(window.collabState.reconnectTimer);
     const delay = window.collabState.reconnectDelay;
     window.collabState.reconnectDelay = Math.min(delay * 1.5, 8000);
@@ -212,8 +309,27 @@ function scheduleReconnect() {
     }, delay);
 }
 
+// Cleanly close WebSocket & notify server on page unload/refresh so live counter never inflates
+window.addEventListener('pagehide', () => {
+    window.collabDisconnect('pagehide');
+});
+
+window.addEventListener('beforeunload', () => {
+    window.collabDisconnect('beforeunload');
+});
+
+// Restore connection if browser restores the page from back/forward cache (bfcache)
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+        window.collabState.intentionalClose = false;
+        window.collabState.hasSentLeave = false;
+        connectCollabWebSocket();
+    }
+});
+
 // Re-verify connection & sync when tab regains visibility or network returns
 window.addEventListener('online', () => {
+    window.collabState.intentionalClose = false;
     connectCollabWebSocket();
     emitCollabLocal('connection:reconnected', { sheetUrl: window.collabState.sheetUrl });
     emitCollabLocal('collab:reconnected', { sheetUrl: window.collabState.sheetUrl });
@@ -222,6 +338,7 @@ window.addEventListener('online', () => {
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
         if (!window.collabState.connected) {
+            window.collabState.intentionalClose = false;
             connectCollabWebSocket();
         } else {
             emitCollabLocal('connection:reconnected', { sheetUrl: window.collabState.sheetUrl });

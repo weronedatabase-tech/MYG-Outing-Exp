@@ -581,11 +581,55 @@ function broadcastToSheet(sheetUrl, messageObj, excludeWs = null) {
     }
 }
 
-function broadcastPresence(sheetUrl = null) {
-    const allUsers = [];
+function removeClientSocket(ws, shouldBroadcast = true) {
+    const meta = clients.get(ws);
+    if (!meta) return false;
+    const prevSheet = meta.sheetUrl || null;
+    if (meta.activeItem) {
+        broadcastToSheet(prevSheet, {
+            type: 'ephemeral:focus',
+            clientId: meta.clientId,
+            sheetUrl: prevSheet,
+            item: null
+        }, ws);
+    }
+    clients.delete(ws);
+    if (shouldBroadcast) {
+        broadcastPresence();
+    }
+    return true;
+}
+
+function evictDuplicateClientId(clientId, keepWs = null) {
+    if (!clientId) return false;
+    let evicted = false;
+    for (const [otherWs, otherMeta] of Array.from(clients.entries())) {
+        if (otherWs !== keepWs && otherMeta.clientId === clientId) {
+            removeClientSocket(otherWs, false);
+            evicted = true;
+            try {
+                if (otherWs.readyState === 0 || otherWs.readyState === 1) {
+                    otherWs.terminate();
+                }
+            } catch (e) {}
+        }
+    }
+    return evicted;
+}
+
+function broadcastPresence() {
+    // Prune any non-open sockets first
+    for (const [ws] of Array.from(clients.entries())) {
+        if (ws.readyState !== 1) {
+            removeClientSocket(ws, false);
+        }
+    }
+
+    // Deduplicate active joined users by clientId so a refreshing tab can never be double-counted
+    const uniqueUsersById = new Map();
     for (const [ws, meta] of clients.entries()) {
-        if (ws.readyState === 1) {
-            allUsers.push({
+        if (ws.readyState === 1 && meta.joined) {
+            uniqueUsersById.set(meta.clientId, {
                 clientId: meta.clientId,
                 sheetUrl: meta.sheetUrl,
                 view: meta.view,
@@ -596,9 +640,10 @@ function broadcastPresence(sheetUrl = null) {
         }
     }
 
+    const allUsers = Array.from(uniqueUsersById.values());
+
     for (const [ws, meta] of clients.entries()) {
-        if (ws.readyState !== 1) continue;
-        if (sheetUrl && meta.sheetUrl && meta.sheetUrl !== sheetUrl && meta.view !== 'admin') continue;
+        if (ws.readyState !== 1 || !meta.joined) continue;
 
         const sameSheetUsers = meta.sheetUrl
             ? allUsers.filter(u => u.sheetUrl === meta.sheetUrl)
@@ -615,8 +660,41 @@ function broadcastPresence(sheetUrl = null) {
     }
 }
 
+// Server-side heartbeat & stale socket sweeper to prevent ghost sessions accumulating
+const wsHeartbeatInterval = setInterval(() => {
+    const now = Date.now();
+    let pruned = false;
+
+    for (const [ws, meta] of Array.from(clients.entries())) {
+        const isStale = (now - (meta.lastSeen || meta.joinedAt)) > 40000;
+        const isUnannounced = !meta.joined && (now - meta.joinedAt) > 15000;
+
+        if (ws.readyState !== 1 || isStale || isUnannounced) {
+            removeClientSocket(ws, false);
+            pruned = true;
+            try { ws.terminate(); } catch (e) {}
+            continue;
+        }
+
+        try { ws.ping(); } catch (e) {
+            removeClientSocket(ws, false);
+            pruned = true;
+            try { ws.terminate(); } catch (err) {}
+        }
+    }
+
+    if (pruned) {
+        broadcastPresence();
+    }
+}, 15000);
+
+wss.on('close', () => {
+    clearInterval(wsHeartbeatInterval);
+});
+
 wss.on('connection', (ws) => {
     const color = COLLAB_COLORS[clients.size % COLLAB_COLORS.length];
+    const now = Date.now();
     const defaultMeta = {
         clientId: 'u_' + Math.random().toString(36).substring(2, 9),
         sheetUrl: null,
@@ -624,9 +702,16 @@ wss.on('connection', (ws) => {
         label: 'Collaborator',
         color,
         activeItem: null,
-        joinedAt: Date.now()
+        joined: false,
+        joinedAt: now,
+        lastSeen: now
     };
     clients.set(ws, defaultMeta);
+
+    ws.on('pong', () => {
+        const meta = clients.get(ws);
+        if (meta) meta.lastSeen = Date.now();
+    });
 
     ws.on('message', (rawMsg) => {
         let msg;
@@ -638,18 +723,21 @@ wss.on('connection', (ws) => {
 
         const meta = clients.get(ws);
         if (!meta) return;
+        meta.lastSeen = Date.now();
 
         switch (msg.type) {
             case 'presence:join':
             case 'presence:update': {
-                const prevSheet = meta.sheetUrl;
                 if (msg.clientId) meta.clientId = msg.clientId;
                 if (msg.sheetUrl !== undefined) meta.sheetUrl = msg.sheetUrl;
                 if (msg.view) meta.view = msg.view;
                 if (msg.label) meta.label = msg.label;
                 if (msg.activeItem !== undefined) meta.activeItem = msg.activeItem;
+                meta.joined = true;
 
-                broadcastPresence(meta.sheetUrl || prevSheet);
+                // Evict any older lingering socket from the same tab/clientId before broadcasting
+                evictDuplicateClientId(meta.clientId, ws);
+                broadcastPresence();
 
                 // If client joined a sheet that has custom bus options, send them immediately
                 if (meta.sheetUrl && roomBusOptions.has(meta.sheetUrl)) {
@@ -662,6 +750,12 @@ wss.on('connection', (ws) => {
                         }));
                     } catch (e) {}
                 }
+                break;
+            }
+
+            case 'presence:leave': {
+                removeClientSocket(ws, true);
+                try { ws.close(1000, 'leave'); } catch (e) {}
                 break;
             }
 
@@ -818,18 +912,11 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        const meta = clients.get(ws);
-        const prevSheet = meta ? meta.sheetUrl : null;
-        if (meta && meta.activeItem) {
-            broadcastToSheet(prevSheet, {
-                type: 'ephemeral:focus',
-                clientId: meta.clientId,
-                sheetUrl: prevSheet,
-                item: null
-            }, ws);
-        }
-        clients.delete(ws);
-        broadcastPresence(prevSheet);
+        removeClientSocket(ws, true);
+    });
+
+    ws.on('error', () => {
+        removeClientSocket(ws, true);
     });
 });
 
@@ -1021,6 +1108,17 @@ setInterval(async () => {
 // =========================================================
 
 app.use(express.text({ type: '*/*', limit: '50mb' }));
+
+app.post('/api/presence/leave', (req, res) => {
+    try {
+        const parsed = typeof req.body === 'string' && req.body ? JSON.parse(req.body) : req.body;
+        const leavingClientId = parsed && parsed.clientId ? String(parsed.clientId) : null;
+        if (leavingClientId && evictDuplicateClientId(leavingClientId, null)) {
+            broadcastPresence();
+        }
+    } catch (e) {}
+    return res.status(204).end();
+});
 
 app.post('/api', async (req, res) => {
     let parsedBody;

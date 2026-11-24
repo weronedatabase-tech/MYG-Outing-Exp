@@ -16,6 +16,9 @@ window.handleNavBack = function() {
 };
 
 async function refreshApp() { 
+ if (window._isRefreshingApp) return;
+ window._isRefreshingApp = true;
+
  const icon = document.getElementById('refreshIcon'); 
  if(icon) icon.classList.add('fa-spin'); 
  
@@ -24,17 +27,24 @@ async function refreshApp() {
      showOverlay('loading', 'Syncing Google Drive & Purging Cache...');
  }
 
- // 1. Save admin login session and user theme
+ // 1. Save admin login session, user theme, and per-tab collaboration ID
  const adminKey = localStorage.getItem('adminKey');
  const theme = localStorage.getItem('theme');
+ let collabTabId = window.collabClientId || null;
+ try {
+     collabTabId = sessionStorage.getItem('myg_collab_tab_id') || collabTabId;
+ } catch(e) {}
 
  // 2. Full frontend cache purge (wipe localStorage & sessionStorage)
  try { localStorage.clear(); } catch(e) {}
  try { sessionStorage.clear(); } catch(e) {}
 
- // Restore admin login session and theme
+ // Restore admin login session, theme, and per-tab collaboration ID
  if (adminKey) localStorage.setItem('adminKey', adminKey);
  if (theme) localStorage.setItem('theme', theme);
+ if (collabTabId) {
+     try { sessionStorage.setItem('myg_collab_tab_id', collabTabId); } catch(e) {}
+ }
 
  // 3. Determine if a specific sheet is open so we can bust its specific cache too
  let targetSheetUrl = null;
@@ -73,7 +83,12 @@ async function refreshApp() {
      } catch(e) {}
  }
 
- // 6. Hard reload with cache-busting timestamp to load latest app version
+ // 6. Cleanly disconnect live WebSocket session before reloading so the live counter never inflates
+ if (typeof window.collabDisconnect === 'function') {
+     window.collabDisconnect('refresh');
+ }
+
+ // 7. Hard reload with cache-busting timestamp to load latest app version
  const cleanUrl = new URL(window.location.href);
  cleanUrl.searchParams.set('_v', Date.now());
  window.location.href = cleanUrl.toString();
