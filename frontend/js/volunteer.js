@@ -690,7 +690,7 @@ window.collabOn('delta:personAttendance', (msg) => {
 const currentUrl = document.getElementById('volSheetSelector')?.value;
 if (!currentUrl || msg.sheetUrl !== currentUrl) return;
 
-const pType = String(msg.personType || '').toLowerCase();
+const pType = String(msg.personType || msg.role || '').toLowerCase();
 const tName = msg.targetName;
 if (!tName) return;
 
@@ -720,7 +720,7 @@ delete personDataCache[`trainee_${u.traineeName}`];
 }
 });
 
-window.collabOn('state:manualPairing', (msg) => {
+window.collabOn('state:pairingData', (msg) => {
 const currentUrl = document.getElementById('volSheetSelector')?.value;
 if (!currentUrl || msg.sheetUrl !== currentUrl) return;
 personDataCache = {};

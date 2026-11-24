@@ -524,6 +524,9 @@ return inputPassword === correctPassword;
 }
 
 function changeAdminPassword(payload) {
+const lock = LockService.getScriptLock();
+try {
+lock.waitLock(28000);
 const { currentPassword, newPassword } = payload;
 const props = PropertiesService.getScriptProperties();
 const storedPassword = props.getProperty("Admin");
@@ -533,6 +536,11 @@ props.setProperty("Admin", newPassword);
 return { success: true, message: "Password updated successfully!" };
 } else {
 return { success: false, message: "Incorrect current password." };
+}
+} catch (e) {
+return { success: false, message: "Error: " + e.toString() };
+} finally {
+lock.releaseLock();
 }
 }
 
@@ -567,7 +575,9 @@ CORE LOGIC (COMM PROFILE)
 ========================================= */
 
 function createOuting(form) {
+const lock = LockService.getScriptLock();
 try {
+lock.waitLock(28000);
 const parentFolder = DriveApp.getFolderById(getParentFolderId());
 const templateFolder = DriveApp.getFolderById(getTemplateFolderId());
 
@@ -603,6 +613,8 @@ precomputeRecentOutings(); // Instantly update global CRON cache
 return { success: true, message: "Folder created & Sheet populated!", url: newFolder.getUrl(), sheetUrl: sheetUrl };
 } catch (e) {
 return { success: false, message: "Error: " + e.toString() };
+} finally {
+lock.releaseLock();
 }
 }
 
@@ -1015,19 +1027,41 @@ const tRange = tSheet.getRange(2, 1, tLastRow - 1, tSheet.getLastColumn());
 const tData = getSafeValues(tRange);
 const tFormulas = tRange.getFormulas();
 
-const updatesMap = {};
+const updatesByTrainee = {};
 updates.forEach(u => {
-updatesMap[u.traineeName.trim().toLowerCase()] = u.volPaired;
+if (!u || !u.traineeName) return;
+const key = u.traineeName.trim().toLowerCase();
+if (!updatesByTrainee[key]) updatesByTrainee[key] = [];
+updatesByTrainee[key].push(u);
 });
 
 let changed = false;
+const mergedUpdates = [];
 
 for (let i = 0; i < tData.length; i++) {
 const name = tData[i][tNameIdx] ? tData[i][tNameIdx].toString().trim().toLowerCase() : "";
-if (name && updatesMap.hasOwnProperty(name)) {
-if (tData[i][tVolPairedIdx] !== updatesMap[name]) {
-tData[i][tVolPairedIdx] = updatesMap[name];
-tFormulas[i][tVolPairedIdx] = ""; 
+if (name && updatesByTrainee.hasOwnProperty(name)) {
+let currentVal = tData[i][tVolPairedIdx] ? tData[i][tVolPairedIdx].toString().trim() : "";
+let nextVal = currentVal;
+updatesByTrainee[name].forEach(u => {
+if (u.op && u.volName) {
+const vols = nextVal ? nextVal.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+const target = String(u.volName).trim();
+const normTarget = target.toLowerCase();
+if (u.op === 'add') {
+if (target && !vols.some(v => v.toLowerCase() === normTarget)) vols.push(target);
+nextVal = vols.join(', ');
+} else if (u.op === 'remove') {
+nextVal = vols.filter(v => v.toLowerCase() !== normTarget).join(', ');
+}
+} else if (u.volPaired !== undefined) {
+nextVal = u.volPaired != null ? String(u.volPaired).trim() : "";
+}
+});
+mergedUpdates.push({ traineeName: tData[i][tNameIdx].toString().trim(), volPaired: nextVal });
+if (currentVal !== nextVal) {
+tData[i][tVolPairedIdx] = nextVal;
+tFormulas[i][tVolPairedIdx] = "";
 changed = true;
 }
 }
@@ -1037,7 +1071,7 @@ if (changed) {
 let tOutput = tData.map((vals, i) => vals.map((v, c) => tFormulas[i][c] !== "" ? tFormulas[i][c] : v));
 tRange.setValues(tOutput);
 // SpreadsheetApp.flush(); // Optimized out
-patchCachesOnPairingSync(sheetUrl, updates);
+patchCachesOnPairingSync(sheetUrl, mergedUpdates);
 }
 
 return { success: true };
@@ -1696,8 +1730,16 @@ return settings;
 }
 
 function saveAppSettings(settings) {
+const lock = LockService.getScriptLock();
+try {
+lock.waitLock(28000);
 PropertiesService.getScriptProperties().setProperty(PROP_SETTINGS, JSON.stringify(settings));
 return { success: true, message: "Settings saved successfully!" };
+} catch (e) {
+return { success: false, message: "Error: " + e.toString() };
+} finally {
+lock.releaseLock();
+}
 }
 
 function getTemplateHeaders() {
@@ -2142,14 +2184,30 @@ const commStr = getLargeCache(commKey);
 const commData = commStr ? JSON.parse(commStr) : null;
 
 updates.forEach(u => {
-const normName = String(u.traineeName).toLowerCase();
+if (!u || !u.traineeName) return;
+const normName = String(u.traineeName).toLowerCase().trim();
+const resolveVal = (curr) => {
+if (u.op && u.volName) {
+const vols = curr ? String(curr).split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+const target = String(u.volName).trim();
+const normTarget = target.toLowerCase();
+if (u.op === 'add') {
+if (target && !vols.some(v => v.toLowerCase() === normTarget)) vols.push(target);
+return vols.join(', ');
+}
+if (u.op === 'remove') {
+return vols.filter(v => v.toLowerCase() !== normTarget).join(', ');
+}
+}
+return u.volPaired != null ? String(u.volPaired).trim() : "";
+};
 if (pairData && pairData.success && pairData.data) {
- const t = pairData.data.trainees.find(x => x.name.toLowerCase() === normName);
- if (t) t.volPaired = u.volPaired;
+ const t = pairData.data.trainees.find(x => x.name.toLowerCase().trim() === normName);
+ if (t) t.volPaired = resolveVal(t.volPaired);
 }
 if (commData && commData.success && commData.participants) {
- const p = commData.participants.find(x => x.name.toLowerCase() === normName);
- if (p) p.volPaired = u.volPaired;
+ const p = commData.participants.find(x => x.name.toLowerCase().trim() === normName);
+ if (p) p.volPaired = resolveVal(p.volPaired);
 }
 });
 

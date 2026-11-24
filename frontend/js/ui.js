@@ -671,6 +671,14 @@ function showPersonInfo(personObj) {
      window.initInfoPairing(pairedVal, sheetUrl);
  }
 
+ window.infoEditInitialValues = {
+     att: document.getElementById('infoEditAttending')?.value ?? '',
+     meet: document.getElementById('infoEditMeeting')?.value ?? '',
+     dis: document.getElementById('infoEditDismissal')?.value ?? '',
+     group: document.getElementById('infoEditGroup')?.value.trim() ?? null,
+     pairing: document.getElementById('infoEditPairingHidden')?.value.trim() ?? null
+ };
+
  if (typeof window.collabEmitFocus === 'function') {
      window.collabEmitFocus({ name: nameStr, role: role, action: 'editing' });
  }
@@ -860,20 +868,34 @@ function submitIntegratedQuickEdit() {
  btn.disabled = true;
  btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...`;
 
+ const initial = window.infoEditInitialValues || {};
  const payloadData = {
-     "Name": name,
-     "Attending (Y/N)": att,
-     "Meeting Location": meet,
-     "Dismissal Location": dis
+     "Name": name
  };
 
- if (group !== null) {
+ if (initial.att === undefined || att !== initial.att) {
+     payloadData["Attending (Y/N)"] = att;
+ }
+ if (initial.meet === undefined || meet !== initial.meet) {
+     payloadData["Meeting Location"] = meet;
+ }
+ if (initial.dis === undefined || dis !== initial.dis) {
+     payloadData["Dismissal Location"] = dis;
+ }
+ if (group !== null && (initial.group === undefined || group !== initial.group)) {
      if (role.toLowerCase() === 'trainee') payloadData["Outing Grouping"] = group;
      else payloadData["Group"] = group; 
  }
-
- if (pairing !== null && role.toLowerCase() === 'trainee') {
+ if (pairing !== null && role.toLowerCase() === 'trainee' && (initial.pairing === undefined || pairing !== initial.pairing)) {
      payloadData["Vol Paired"] = pairing;
+ }
+
+ const hasFieldChanges = Object.keys(payloadData).length > 1;
+ if (!hasFieldChanges) {
+     closePersonInfoModal();
+     btn.disabled = false;
+     btn.innerHTML = `<i class="fa-solid fa-save"></i> Save Changes`;
+     return;
  }
 
  const payload = { sheetUrl: sheetUrl, type: role.toLowerCase(), data: payloadData, targetName: name };
@@ -885,6 +907,7 @@ function submitIntegratedQuickEdit() {
          type: 'live:personAttendance',
          sheetUrl: sheetUrl,
          role: role.toLowerCase(),
+         personType: role.toLowerCase(),
          targetName: name,
          data: payloadData
      });

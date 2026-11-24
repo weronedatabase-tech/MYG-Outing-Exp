@@ -17,11 +17,14 @@ searchQuery: ""
 };
 
 let pendingCommAttUpdates = {};
+let inFlightCommAttUpdates = {};
 let isCommAttSyncing = false;
 let commAttSyncTimeout = null;
 let commAttPollInterval = null;
 let commAttFiltersChanged = false;
 let lastCommAttLocalChange = 0;
+const commAttCardTimers = new Map();
+const busCardTimers = new Map();
 
 // Caches for Outing Message and Config
 let outingDetailsCache = {};
@@ -32,6 +35,29 @@ for(let junc in pendingCommAttUpdates) {
 if(Object.keys(pendingCommAttUpdates[junc]).length > 0) return true;
 }
 return false;
+}
+
+function hasLocalOrInFlightCommUpdates() {
+if (hasPendingUpdates()) return true;
+for (let junc in inFlightCommAttUpdates) {
+if (Object.keys(inFlightCommAttUpdates[junc]).length > 0) return true;
+}
+return false;
+}
+
+function clearPendingCardTimer(timerMap, cardId) {
+const existingTimer = timerMap.get(cardId);
+if (existingTimer) {
+clearTimeout(existingTimer);
+timerMap.delete(cardId);
+}
+}
+
+function removeDuplicateCardNodes(cardId, keepNode = null) {
+const dupes = document.querySelectorAll(`[id="${cardId}"]`);
+dupes.forEach(node => {
+if (node !== keepNode) node.remove();
+});
 }
 
 // Data enforcement hook to guarantee foundational UI state integrity
@@ -792,6 +818,9 @@ renderCommAttLists();
 }
 
 function renderCommAttLists() {
+commAttCardTimers.forEach(timer => clearTimeout(timer));
+commAttCardTimers.clear();
+
 const notCheckedList = document.getElementById('commAttNotCheckedList');
 const checkedList = document.getElementById('commAttCheckedList');
 const goneHomeList = document.getElementById('commAttGoneHomeList');
@@ -897,6 +926,9 @@ if (p) {
 }
 });
 });
+if (typeof window.applyAllCollabRemoteFocus === 'function') {
+window.applyAllCollabRemoteFocus();
+}
 }
 
 function generateCommAttCard(p, isChecked, isGoneHome) {
@@ -989,7 +1021,9 @@ const isGoneHome = commAttData.attendance['__GONE_HOME__'] && commAttData.attend
 const isChecked = juncture && commAttData.attendance[juncture] ? commAttData.attendance[juncture][p.name] === true : false;
 
 const cardId = `comm-att-card-${p.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+clearPendingCardTimer(commAttCardTimers, cardId);
 const existingCard = document.getElementById(cardId);
+removeDuplicateCardNodes(cardId, existingCard);
 
 const newHtml = generateCommAttCard(p, isChecked, isGoneHome);
 
@@ -1009,8 +1043,10 @@ rebindCommAttCard(cardId, p);
 
 const newNode = document.getElementById(cardId);
 if (newNode) applyCardPulse(newNode, pulseClass);
+if (typeof window.applyAllCollabRemoteFocus === 'function') window.applyAllCollabRemoteFocus();
 } else {
 // Smoothly collapse
+existingCard.dataset.collapsing = '1';
 existingCard.style.overflow = 'hidden';
 existingCard.style.minHeight = '0';
 existingCard.style.transition = 'opacity 0.2s ease, height 0.3s ease, margin 0.3s ease, padding 0.3s ease';
@@ -1025,8 +1061,10 @@ existingCard.style.margin = '0px';
 existingCard.style.padding = '0px';
 existingCard.style.border = 'none';
 
-setTimeout(() => {
-existingCard.remove();
+const timerId = setTimeout(() => {
+commAttCardTimers.delete(cardId);
+if (existingCard.isConnected) existingCard.remove();
+removeDuplicateCardNodes(cardId);
 
 const temp = document.createElement('div');
 temp.innerHTML = newHtml;
@@ -1046,6 +1084,7 @@ newNode.style.transform = 'translateY(0)';
 
 updateCommAttCountsDOM();
 rebindCommAttCard(cardId, p);
+if (typeof window.applyAllCollabRemoteFocus === 'function') window.applyAllCollabRemoteFocus();
 
 if (!isRemote) {
 scrollCardIntoViewLocally(newNode);
@@ -1054,7 +1093,17 @@ setTimeout(() => {
  applyCardPulse(newNode, pulseClass);
 }, isRemote ? 100 : 400);
 }, 300);
+commAttCardTimers.set(cardId, timerId);
 }
+} else {
+const temp = document.createElement('div');
+temp.innerHTML = newHtml;
+const newNode = temp.firstElementChild;
+insertCardSorted(targetList, newNode, p);
+updateCommAttCountsDOM();
+rebindCommAttCard(cardId, p);
+if (typeof window.applyAllCollabRemoteFocus === 'function') window.applyAllCollabRemoteFocus();
+applyCardPulse(newNode, pulseClass);
 }
 }
 
@@ -1321,6 +1370,7 @@ payloadUpdates[junc].push({ name: name, status: pendingCommAttUpdates[junc][name
 }
 
 const batchBackup = JSON.parse(JSON.stringify(pendingCommAttUpdates));
+inFlightCommAttUpdates = batchBackup;
 pendingCommAttUpdates = {};
 
 try {
@@ -1338,10 +1388,13 @@ setBusSyncBtnState('error');
 for (let junc in batchBackup) {
 if(!pendingCommAttUpdates[junc]) pendingCommAttUpdates[junc] = {};
 for (let name in batchBackup[junc]) {
+if (pendingCommAttUpdates[junc][name] === undefined) {
 pendingCommAttUpdates[junc][name] = batchBackup[junc][name];
 }
 }
+}
 } finally {
+inFlightCommAttUpdates = {};
 isCommAttSyncing = false;
 if (hasPendingUpdates()) {
 triggerSync();
@@ -1476,12 +1529,12 @@ commAttPollInterval = setInterval(() => {
 const view = document.getElementById('view-comm-attendance');
 if (!view || view.classList.contains('hidden')) return;
 
-if (isCommAttSyncing || hasPendingUpdates()) return;
+if (isCommAttSyncing || hasLocalOrInFlightCommUpdates()) return;
 
 const fetchStartTime = Date.now();
 
 apiCall('fetchCommAttendance', { sheetUrl: currentCommAttSheetUrl }).then(res => {
-if (res.success && !isCommAttSyncing && !hasPendingUpdates()) {
+if (res.success && !isCommAttSyncing && !hasLocalOrInFlightCommUpdates()) {
 if (lastCommAttLocalChange > fetchStartTime) return;
 
 const oldJunctures = JSON.stringify(commAttData.junctures);
@@ -1491,6 +1544,9 @@ const oldAttendance = JSON.stringify(commAttData.attendance);
 const oldBusAttendance = JSON.stringify(commAttData.busAttendance);
 
 commAttData = res;
+if (res.busOptions && typeof res.busOptions === 'object') {
+busState.busOptionsByJuncture = Object.assign({}, busState.busOptionsByJuncture, res.busOptions);
+}
 ensureMeetingJuncture();
 
 const newJunctures = JSON.stringify(commAttData.junctures);
@@ -1644,6 +1700,8 @@ window.collabSend({
 type: 'live:busOptions',
 sheetUrl: currentCommAttSheetUrl,
 juncture: busState.currentJuncture,
+action: 'add',
+busName: newBusName,
 busOptions: busState.busOptions
 });
 }
@@ -1696,6 +1754,8 @@ window.collabSend({
 type: 'live:busOptions',
 sheetUrl: currentCommAttSheetUrl,
 juncture: juncture,
+action: 'remove',
+busName: filterBus,
 busOptions: busState.busOptions
 });
 if (liveUnassigned.length > 0) {
@@ -1752,6 +1812,9 @@ return participants;
 }
 
 function renderBusLists() {
+busCardTimers.forEach(timer => clearTimeout(timer));
+busCardTimers.clear();
+
 const notBoardedList = document.getElementById('busNotBoardedList');
 const boardedList = document.getElementById('busBoardedList');
 
@@ -1826,6 +1889,9 @@ if (p) {
 }
 });
 });
+if (typeof window.applyAllCollabRemoteFocus === 'function') {
+window.applyAllCollabRemoteFocus();
+}
 }
 
 function generateBusCard(p, isBoarded, assignedBus) {
@@ -1876,7 +1942,9 @@ const currentBus = commAttData.busAttendance[juncture] ? commAttData.busAttendan
 const isBoarded = !!currentBus;
 
 const cardId = `bus-att-card-${p.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+clearPendingCardTimer(busCardTimers, cardId);
 const existingCard = document.getElementById(cardId);
+removeDuplicateCardNodes(cardId, existingCard);
 
 const newHtml = generateBusCard(p, isBoarded, currentBus);
 
@@ -1900,7 +1968,9 @@ existingCard.outerHTML = newHtml;
 rebindCommAttCard(cardId, p);
 const newNode = document.getElementById(cardId);
 if (newNode) applyCardPulse(newNode, isBoarded ? 'pulse-green' : 'pulse-red');
+if (typeof window.applyAllCollabRemoteFocus === 'function') window.applyAllCollabRemoteFocus();
 } else {
+existingCard.dataset.collapsing = '1';
 existingCard.style.overflow = 'hidden';
 existingCard.style.minHeight = '0';
 existingCard.style.transition = 'opacity 0.2s ease, height 0.3s ease, margin 0.3s ease, padding 0.3s ease';
@@ -1912,8 +1982,11 @@ existingCard.style.margin = '0px';
 existingCard.style.padding = '0px';
 existingCard.style.border = 'none';
 
-setTimeout(() => {
-existingCard.remove();
+const timerId = setTimeout(() => {
+busCardTimers.delete(cardId);
+if (existingCard.isConnected) existingCard.remove();
+removeDuplicateCardNodes(cardId);
+
 const temp = document.createElement('div');
 temp.innerHTML = newHtml;
 const newNode = temp.firstElementChild;
@@ -1926,6 +1999,7 @@ newNode.style.opacity = '1';
 newNode.style.transform = 'translateY(0)';
 updateBusCountsDOM();
 rebindCommAttCard(cardId, p);
+if (typeof window.applyAllCollabRemoteFocus === 'function') window.applyAllCollabRemoteFocus();
 
 if (!isRemote) {
 scrollCardIntoViewLocally(newNode);
@@ -1934,7 +2008,17 @@ setTimeout(() => {
  applyCardPulse(newNode, isBoarded ? 'pulse-green' : 'pulse-red');
 }, isRemote ? 100 : 400);
 }, 300);
+busCardTimers.set(cardId, timerId);
 }
+} else {
+const temp = document.createElement('div');
+temp.innerHTML = newHtml;
+const newNode = temp.firstElementChild;
+insertCardSorted(targetList, newNode, p);
+updateBusCountsDOM();
+rebindCommAttCard(cardId, p);
+if (typeof window.applyAllCollabRemoteFocus === 'function') window.applyAllCollabRemoteFocus();
+applyCardPulse(newNode, isBoarded ? 'pulse-green' : 'pulse-red');
 }
 }
 
@@ -2161,7 +2245,10 @@ const cleanBusJunc = juncKey.replace('__BUS__', '');
 if (!commAttData.busAttendance[cleanBusJunc]) commAttData.busAttendance[cleanBusJunc] = {};
 list.forEach(item => {
 if (pendingCommAttUpdates[juncKey] && pendingCommAttUpdates[juncKey][item.name] !== undefined) return;
+if (inFlightCommAttUpdates[juncKey] && inFlightCommAttUpdates[juncKey][item.name] !== undefined) return;
 const val = item.status ? String(item.status).trim() : "";
+const prevVal = commAttData.busAttendance[cleanBusJunc][item.name] ? String(commAttData.busAttendance[cleanBusJunc][item.name]).trim() : "";
+if (prevVal === val) return;
 commAttData.busAttendance[cleanBusJunc][item.name] = val;
 if (val && busState.currentJuncture === cleanBusJunc && !busState.busOptions.includes(val)) {
 busState.busOptions.push(val);
@@ -2176,7 +2263,11 @@ updatedBusNames.add(item.name);
 if (!commAttData.attendance[juncKey]) commAttData.attendance[juncKey] = {};
 list.forEach(item => {
 if (pendingCommAttUpdates[juncKey] && pendingCommAttUpdates[juncKey][item.name] !== undefined) return;
-commAttData.attendance[juncKey][item.name] = item.status === true;
+if (inFlightCommAttUpdates[juncKey] && inFlightCommAttUpdates[juncKey][item.name] !== undefined) return;
+const nextBool = item.status === true || String(item.status).toLowerCase() === 'true';
+const prevBool = commAttData.attendance[juncKey][item.name] === true;
+if (prevBool === nextBool) return;
+commAttData.attendance[juncKey][item.name] = nextBool;
 if (juncKey === commAttState.currentJuncture || juncKey === '__GONE_HOME__') {
 updatedAttendanceNames.add(item.name);
 }
@@ -2215,13 +2306,15 @@ updateBusCountsDOM();
 
 // 2. Live Bus Options Sync (when a collaborator adds/removes a Bus)
 window.collabOn('delta:busOptions', (msg) => {
-if (msg.senderId && msg.senderId === window.collabClientId) return;
 if (!currentCommAttSheetUrl || msg.sheetUrl !== currentCommAttSheetUrl) return;
 if (!msg.juncture || !Array.isArray(msg.busOptions)) return;
 
-busState.busOptionsByJuncture[msg.juncture] = [...msg.busOptions];
+const sortedOpts = [...msg.busOptions].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+if (JSON.stringify(busState.busOptionsByJuncture[msg.juncture]) === JSON.stringify(sortedOpts)) return;
+
+busState.busOptionsByJuncture[msg.juncture] = sortedOpts;
 if (busState.currentJuncture === msg.juncture) {
-busState.busOptions = [...msg.busOptions];
+busState.busOptions = [...sortedOpts];
 renderBusFilterOptions();
 renderBusLists();
 }
@@ -2247,8 +2340,23 @@ if (!Array.isArray(msg.updates) || !commAttData || !commAttData.participants) re
 let changed = false;
 msg.updates.forEach(u => {
 const p = commAttData.participants.find(x => x.name === u.traineeName);
-if (p && p.volPaired !== u.volPaired) {
-p.volPaired = u.volPaired;
+if (!p) return;
+let nextVolPaired = p.volPaired || "";
+if (u.op === 'add' && u.volName) {
+const vols = nextVolPaired ? nextVolPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+if (!vols.some(v => v.toLowerCase() === u.volName.toLowerCase())) {
+vols.push(u.volName);
+}
+nextVolPaired = vols.join(', ');
+} else if (u.op === 'remove' && u.volName) {
+const vols = nextVolPaired ? nextVolPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+nextVolPaired = vols.filter(v => v.toLowerCase() !== u.volName.toLowerCase()).join(', ');
+} else if (u.volPaired !== undefined) {
+nextVolPaired = u.volPaired;
+}
+if (p.volPaired !== nextVolPaired) {
+p.volPaired = nextVolPaired;
+if (p.extra) p.extra.t_paired_vol = nextVolPaired;
 changed = true;
 updateCommAttCardDOM(p.name, true);
 const busModal = document.getElementById('busTrackerModal');
@@ -2273,6 +2381,7 @@ if (u.role === 'TRAINEE' && u.group !== undefined) {
 const p = commAttData.participants.find(x => x.name === u.name);
 if (p && String(p.group || '') !== String(u.group || '')) {
 p.group = u.group;
+if (p.extra) p.extra.t_group = u.group;
 changed = true;
 }
 }
@@ -2290,36 +2399,92 @@ if (!commAttData || !commAttData.participants) return;
 
 const targetName = msg.targetName;
 const data = msg.data || {};
-const role = String(msg.personType || '').toUpperCase();
+const role = String(msg.personType || msg.role || '').toUpperCase();
+if (!targetName) return;
+const normName = String(targetName).toLowerCase().trim();
 
-if (role === 'TRAINEE' && targetName) {
-const p = commAttData.participants.find(x => x.name === targetName);
-let attChanged = false;
+let attVal = undefined;
 for (const k in data) {
 const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
 if (cleanK.includes('attending')) {
-attChanged = true;
+attVal = String(data[k]).toLowerCase().trim();
 }
 }
-if (p && !attChanged) {
+
+if (role === 'TRAINEE') {
+let p = commAttData.participants.find(x => x.name.toLowerCase().trim() === normName);
+if (attVal === 'n' || attVal === '') {
+if (p) {
+commAttData.participants = commAttData.participants.filter(x => x.name.toLowerCase().trim() !== normName);
+const cardId = `comm-att-card-${p.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+clearPendingCardTimer(commAttCardTimers, cardId);
+renderCommAttFilters();
+renderCommAttLists();
+const busModal = document.getElementById('busTrackerModal');
+if (busModal && !busModal.classList.contains('hidden')) renderBusLists();
+}
+return;
+}
+
+let wasAdded = false;
+if (!p && attVal === 'y') {
+p = {
+name: targetName,
+group: "",
+caregivers: 0,
+volPaired: "",
+meetingLoc: "",
+dismissalLoc: "",
+extra: { role: 'TRAINEE' }
+};
+commAttData.participants.push(p);
+if (commAttData.attendance && commAttData.attendance['__GONE_HOME__']) {
+commAttData.attendance['__GONE_HOME__'][targetName] = false;
+}
+wasAdded = true;
+}
+
+if (p) {
 if (!p.extra) p.extra = {};
 for (const k in data) {
 const val = data[k];
 const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
 if (cleanK.includes('caregiver')) p.caregivers = parseInt(val, 10) || 0;
-else if (cleanK.includes('meetinglocation')) p.meetingLoc = val;
-else if (cleanK.includes('dismissallocation')) p.dismissalLoc = val;
-else if (cleanK.includes('vol') && cleanK.includes('paired')) p.volPaired = val;
+else if (cleanK.includes('meetinglocation')) { p.meetingLoc = String(val || '').trim(); p.extra.t_meet = p.meetingLoc; }
+else if (cleanK.includes('dismissallocation')) { p.dismissalLoc = String(val || '').trim(); p.extra.t_dismiss = p.dismissalLoc; }
+else if (cleanK.includes('group')) { p.group = String(val || '').trim(); p.extra.t_group = p.group; }
+else if (cleanK.includes('vol') && cleanK.includes('paired')) { p.volPaired = String(val || '').trim(); p.extra.t_paired_vol = p.volPaired; }
 else if (cleanK.includes('remark')) { p.extra.remark = val; p.extra.remarks = val; }
 else if (cleanK.includes('11') || cleanK.includes('oneonone')) p.extra.t_one_on_one = val;
 p.extra[k] = val;
 }
 renderCommAttFilters();
-updateCommAttCardDOM(targetName, true);
+if (wasAdded) {
+renderCommAttLists();
+} else {
+updateCommAttCardDOM(p.name, true);
+updateCommAttCountsDOM();
+}
 const busModal = document.getElementById('busTrackerModal');
 if (busModal && !busModal.classList.contains('hidden')) {
 renderBusLists();
 }
+}
+} else if (role === 'VOLUNTEER' && attVal === 'n') {
+let affected = [];
+commAttData.participants.forEach(t => {
+if (t.volPaired && t.volPaired.toLowerCase().includes(normName)) {
+const vols = t.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v);
+t.volPaired = vols.filter(v => v.toLowerCase() !== normName).join(', ');
+if (t.extra) t.extra.t_paired_vol = t.volPaired;
+affected.push(t.name);
+}
+});
+affected.forEach(tName => updateCommAttCardDOM(tName, true));
+if (affected.length > 0) {
+updateCommAttCountsDOM();
+const busModal = document.getElementById('busTrackerModal');
+if (busModal && !busModal.classList.contains('hidden')) renderBusLists();
 }
 }
 });
@@ -2327,7 +2492,7 @@ renderBusLists();
 // 6. Full Authoritative Tracker State Broadcast (e.g. Junctures added/deleted, Auto-Pair/Group, Sheet edits)
 window.collabOn('state:commAttendance', (msg) => {
 if (!currentCommAttSheetUrl || msg.sheetUrl !== currentCommAttSheetUrl) return;
-if (!msg.data || isCommAttSyncing || hasPendingUpdates()) return;
+if (!msg.data || isCommAttSyncing || hasLocalOrInFlightCommUpdates()) return;
 
 const view = document.getElementById('view-comm-attendance');
 if (!view || view.classList.contains('hidden')) return;
@@ -2383,10 +2548,13 @@ if (currentCommAttSheetUrl && view && !view.classList.contains('hidden')) {
 if (typeof window.collabSetContext === 'function') {
 window.collabSetContext('tracker', currentCommAttSheetUrl);
 }
-if (!isCommAttSyncing && !hasPendingUpdates()) {
+if (!isCommAttSyncing && !hasLocalOrInFlightCommUpdates()) {
 apiCall('fetchCommAttendance', { sheetUrl: currentCommAttSheetUrl }).then(res => {
-if (res && res.success && !isCommAttSyncing && !hasPendingUpdates()) {
+if (res && res.success && !isCommAttSyncing && !hasLocalOrInFlightCommUpdates()) {
 commAttData = res;
+if (res.busOptions && typeof res.busOptions === 'object') {
+busState.busOptionsByJuncture = Object.assign({}, busState.busOptionsByJuncture, res.busOptions);
+}
 ensureMeetingJuncture();
 renderCommAttFilters();
 renderCommAttJunctures();

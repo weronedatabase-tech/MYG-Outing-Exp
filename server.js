@@ -24,7 +24,12 @@ const inFlightRequests = new Map();
 // but are still queued or in-flight to Google Apps Script (GAS)
 // Map<sheetUrl, Array<{ id, type, payload, timestamp }>>
 const pendingServerMutations = new Map();
+const lastLiveWsMutationAt = new Map();
 let mutationCounter = 1;
+
+function touchLiveWsMutation(sheetUrl) {
+    if (sheetUrl) lastLiveWsMutationAt.set(sheetUrl, Date.now());
+}
 
 function addPendingServerMutation(sheetUrl, type, payload) {
     if (!sheetUrl) return null;
@@ -51,9 +56,9 @@ function removePendingServerMutation(sheetUrl, id) {
     }
 }
 
-// Concurrency queue for write requests to avoid hitting GAS limits
+// Concurrency queue for write requests to avoid hitting GAS limits and preserve strict FIFO write order
 class AsyncQueue {
-    constructor(concurrency = 3) {
+    constructor(concurrency = 1) {
         this.concurrency = concurrency;
         this.running = 0;
         this.queue = [];
@@ -89,7 +94,7 @@ class AsyncQueue {
     }
 }
 
-const writeQueue = new AsyncQueue(3);
+const writeQueue = new AsyncQueue(1);
 
 const READ_ACTIONS = [
     'getAppSettings',
@@ -176,6 +181,23 @@ function patchPairingDataFromCommSync(pairData, multipleUpdates) {
     return changed;
 }
 
+function mergePairingOp(currentStr, op, volName) {
+    const vols = currentStr ? String(currentStr).split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+    const target = String(volName || '').trim();
+    if (!target) return vols.join(', ');
+    const normTarget = target.toLowerCase();
+    if (op === 'add') {
+        if (!vols.some(v => v.toLowerCase() === normTarget)) {
+            vols.push(target);
+        }
+        return vols.join(', ');
+    }
+    if (op === 'remove') {
+        return vols.filter(v => v.toLowerCase() !== normTarget).join(', ');
+    }
+    return vols.join(', ');
+}
+
 function patchStatesOnPairingUpdate(sheetUrl, updates) {
     if (!sheetUrl || !Array.isArray(updates)) return;
     const pairKey = getReadCacheKey('fetchManualPairingData', { sheetUrl });
@@ -187,21 +209,29 @@ function patchStatesOnPairingUpdate(sheetUrl, updates) {
     updates.forEach(u => {
         if (!u || !u.traineeName) return;
         const normName = String(u.traineeName).toLowerCase().trim();
-        const newVolPaired = u.volPaired != null ? String(u.volPaired).trim() : "";
+        const t = (pairData && pairData.success && pairData.data && Array.isArray(pairData.data.trainees))
+            ? pairData.data.trainees.find(x => x.name && x.name.toLowerCase().trim() === normName)
+            : null;
+        const p = (commData && commData.success && Array.isArray(commData.participants))
+            ? commData.participants.find(x => x.name && x.name.toLowerCase().trim() === normName)
+            : null;
 
-        if (pairData && pairData.success && pairData.data && Array.isArray(pairData.data.trainees)) {
-            const t = pairData.data.trainees.find(x => x.name && x.name.toLowerCase().trim() === normName);
-            if (t) {
-                t.volPaired = newVolPaired;
-                if (t.extra) t.extra.t_paired_vol = newVolPaired;
-            }
+        let newVolPaired;
+        if (u.op && u.volName) {
+            const baseVolPaired = t ? t.volPaired : (p ? p.volPaired : (u.volPaired || ""));
+            newVolPaired = mergePairingOp(baseVolPaired, u.op, u.volName);
+            u.volPaired = newVolPaired;
+        } else {
+            newVolPaired = u.volPaired != null ? String(u.volPaired).trim() : "";
         }
-        if (commData && commData.success && Array.isArray(commData.participants)) {
-            const p = commData.participants.find(x => x.name && x.name.toLowerCase().trim() === normName);
-            if (p) {
-                p.volPaired = newVolPaired;
-                if (p.extra) p.extra.t_paired_vol = newVolPaired;
-            }
+
+        if (t) {
+            t.volPaired = newVolPaired;
+            if (t.extra) t.extra.t_paired_vol = newVolPaired;
+        }
+        if (p) {
+            p.volPaired = newVolPaired;
+            if (p.extra) p.extra.t_paired_vol = newVolPaired;
         }
     });
 }
@@ -249,8 +279,8 @@ function patchStatesOnGroupingUpdate(sheetUrl, updates) {
     });
 }
 
-function patchStatesOnPersonAttendanceUpdate(sheetUrl, type, targetName, data) {
-    if (!sheetUrl || !type || !data) return;
+function patchPersonAttendanceInMemory(type, targetName, data, pairData, commData, namesData) {
+    if (!type || !data) return;
     const role = String(type).toUpperCase();
     const rawName = targetName || data['Name'] || data[Object.keys(data)[0]];
     if (!rawName) return;
@@ -279,8 +309,6 @@ function patchStatesOnPersonAttendanceUpdate(sheetUrl, type, targetName, data) {
     }
 
     // 1. Patch fetchManualPairingData
-    const pairKey = getReadCacheKey('fetchManualPairingData', { sheetUrl });
-    const pairData = cache.get(pairKey);
     if (pairData && pairData.success && pairData.data) {
         if (role === 'TRAINEE') {
             let person = pairData.data.trainees.find(p => p.name.toLowerCase().trim() === normName);
@@ -353,8 +381,6 @@ function patchStatesOnPersonAttendanceUpdate(sheetUrl, type, targetName, data) {
     }
 
     // 2. Patch fetchCommAttendance
-    const commKey = getReadCacheKey('fetchCommAttendance', { sheetUrl });
-    const commData = cache.get(commKey);
     if (commData && commData.success && Array.isArray(commData.participants)) {
         if (role === 'TRAINEE') {
             let person = commData.participants.find(p => p.name.toLowerCase().trim() === normName);
@@ -408,19 +434,30 @@ function patchStatesOnPersonAttendanceUpdate(sheetUrl, type, targetName, data) {
     }
 
     // 3. Patch getNamesList
-    const namesKey = getReadCacheKey('getNamesList', { url: sheetUrl, type: type.toLowerCase() });
-    const namesData = cache.get(namesKey);
     if (namesData && namesData.success && Array.isArray(namesData.names)) {
         if (!namesData.names.some(n => n.toLowerCase().trim() === normName)) {
             namesData.names.push(name);
             namesData.names.sort();
         }
     }
+}
 
-    // 4. Patch or invalidate getPersonData for this person
-    const personKey = getReadCacheKey('getPersonData', { url: sheetUrl, type: type.toLowerCase(), name });
-    cache.del(personKey);
-    // Also clear getOutingDetails cache so next stats fetch gets fresh counts
+function patchStatesOnPersonAttendanceUpdate(sheetUrl, type, targetName, data) {
+    if (!sheetUrl || !type || !data) return;
+    const rawName = targetName || data['Name'] || data[Object.keys(data)[0]];
+    const name = rawName ? String(rawName).trim() : '';
+
+    const pairData = cache.get(getReadCacheKey('fetchManualPairingData', { sheetUrl }));
+    const commData = cache.get(getReadCacheKey('fetchCommAttendance', { sheetUrl }));
+    const namesData = cache.get(getReadCacheKey('getNamesList', { url: sheetUrl, type: type.toLowerCase() }));
+
+    patchPersonAttendanceInMemory(type, targetName, data, pairData, commData, namesData);
+
+    // Clear person/details caches
+    if (name) {
+        const personKey = getReadCacheKey('getPersonData', { url: sheetUrl, type: type.toLowerCase(), name });
+        cache.del(personKey);
+    }
     cache.del(getReadCacheKey('getOutingDetails', sheetUrl));
 }
 
@@ -438,7 +475,12 @@ function applyPendingMutationsToState(action, reqData, responseData) {
                 (m.payload.updates || []).forEach(u => {
                     const normName = String(u.traineeName || '').toLowerCase().trim();
                     const p = (responseData.participants || []).find(x => x.name.toLowerCase().trim() === normName);
-                    if (p) p.volPaired = u.volPaired;
+                    if (p) {
+                        p.volPaired = (u.op && u.volName)
+                            ? mergePairingOp(p.volPaired, u.op, u.volName)
+                            : (u.volPaired != null ? String(u.volPaired).trim() : "");
+                        if (p.extra) p.extra.t_paired_vol = p.volPaired;
+                    }
                 });
             } else if (m.type === 'syncManualGroupingUpdates') {
                 (m.payload.updates || []).forEach(u => {
@@ -448,6 +490,8 @@ function applyPendingMutationsToState(action, reqData, responseData) {
                         if (p) p.group = u.group;
                     }
                 });
+            } else if (m.type === 'submitAttendanceData' && m.payload) {
+                patchPersonAttendanceInMemory(m.payload.type, m.payload.targetName, m.payload.data, null, responseData, null);
             }
         } else if (action === 'fetchManualPairingData' && responseData.data) {
             if (m.type === 'syncCommAttendance') {
@@ -456,7 +500,12 @@ function applyPendingMutationsToState(action, reqData, responseData) {
                 (m.payload.updates || []).forEach(u => {
                     const normName = String(u.traineeName || '').toLowerCase().trim();
                     const t = (responseData.data.trainees || []).find(x => x.name.toLowerCase().trim() === normName);
-                    if (t) t.volPaired = u.volPaired;
+                    if (t) {
+                        t.volPaired = (u.op && u.volName)
+                            ? mergePairingOp(t.volPaired, u.op, u.volName)
+                            : (u.volPaired != null ? String(u.volPaired).trim() : "");
+                        if (t.extra) t.extra.t_paired_vol = t.volPaired;
+                    }
                 });
             } else if (m.type === 'syncManualGroupingUpdates') {
                 (m.payload.updates || []).forEach(u => {
@@ -473,6 +522,12 @@ function applyPendingMutationsToState(action, reqData, responseData) {
                         }
                     }
                 });
+            } else if (m.type === 'submitAttendanceData' && m.payload) {
+                patchPersonAttendanceInMemory(m.payload.type, m.payload.targetName, m.payload.data, responseData, null, null);
+            }
+        } else if (action === 'getNamesList') {
+            if (m.type === 'submitAttendanceData' && m.payload && reqData && String(m.payload.type || '').toLowerCase() === String(reqData.type || '').toLowerCase()) {
+                patchPersonAttendanceInMemory(m.payload.type, m.payload.targetName, m.payload.data, null, null, responseData);
             }
         }
     }
@@ -489,6 +544,13 @@ const clients = new Map();
 // Store custom bus options per sheetUrl + juncture in memory so all collaborators see added/removed buses
 // Map<sheetUrl, Record<juncture, string[]>>
 const roomBusOptions = new Map();
+
+function attachRoomBusOptions(sheetUrl, commData) {
+    if (sheetUrl && commData && commData.success && roomBusOptions.has(sheetUrl)) {
+        commData.busOptions = roomBusOptions.get(sheetUrl);
+    }
+    return commData;
+}
 
 const COLLAB_COLORS = [
     '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6',
@@ -622,6 +684,7 @@ wss.on('connection', (ws) => {
             case 'live:commAttendance': {
                 const { sheetUrl, multipleUpdates } = msg;
                 if (!sheetUrl || !multipleUpdates) break;
+                touchLiveWsMutation(sheetUrl);
                 const commKey = getReadCacheKey('fetchCommAttendance', { sheetUrl });
                 const pairKey = getReadCacheKey('fetchManualPairingData', { sheetUrl });
                 const commData = cache.get(commKey);
@@ -640,25 +703,61 @@ wss.on('connection', (ws) => {
             }
 
             case 'live:busOptions': {
-                const { sheetUrl, juncture, busOptions } = msg;
-                if (!sheetUrl || !juncture || !Array.isArray(busOptions)) break;
+                const { sheetUrl, juncture, busOptions, action: busAction, busName } = msg;
+                if (!sheetUrl || !juncture || (!Array.isArray(busOptions) && !busName)) break;
+                touchLiveWsMutation(sheetUrl);
+
                 if (!roomBusOptions.has(sheetUrl)) roomBusOptions.set(sheetUrl, {});
-                roomBusOptions.get(sheetUrl)[juncture] = busOptions;
+                const currentMap = roomBusOptions.get(sheetUrl);
+                let opts = Array.isArray(currentMap[juncture]) ? [...currentMap[juncture]] : null;
+                if (!opts) {
+                    const set = new Set(['Bus 1']);
+                    const commData = cache.get(getReadCacheKey('fetchCommAttendance', { sheetUrl }));
+                    if (commData && commData.busAttendance && commData.busAttendance[juncture]) {
+                        Object.values(commData.busAttendance[juncture]).forEach(b => {
+                            if (b && String(b).trim()) set.add(String(b).trim());
+                        });
+                    }
+                    opts = Array.from(set);
+                }
+
+                const cleanBusName = busName ? String(busName).trim() : '';
+                if (busAction === 'add' && cleanBusName) {
+                    if (!opts.includes(cleanBusName)) opts.push(cleanBusName);
+                } else if (busAction === 'remove' && cleanBusName) {
+                    opts = opts.filter(b => b !== cleanBusName);
+                    if (opts.length === 0) opts = ['Bus 1'];
+                } else if (Array.isArray(busOptions)) {
+                    opts = Array.from(new Set([...opts, ...busOptions.map(b => String(b).trim()).filter(Boolean)]));
+                }
+
+                opts.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                currentMap[juncture] = opts;
+
+                const commData = cache.get(getReadCacheKey('fetchCommAttendance', { sheetUrl }));
+                if (commData && commData.success) attachRoomBusOptions(sheetUrl, commData);
+
+                const sentSorted = Array.isArray(busOptions)
+                    ? [...busOptions].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+                    : [];
+                const mergedDiffersFromSender = JSON.stringify(opts) !== JSON.stringify(sentSorted);
 
                 broadcastToSheet(sheetUrl, {
                     type: 'delta:busOptions',
                     sheetUrl,
                     juncture,
-                    busOptions,
+                    busOptions: opts,
                     senderId: msg.senderId || meta.clientId,
+                    forceApply: mergedDiffersFromSender,
                     timestamp: Date.now()
-                }, ws);
+                }, mergedDiffersFromSender ? null : ws);
                 break;
             }
 
             case 'live:pairing': {
                 const { sheetUrl, updates } = msg;
                 if (!sheetUrl || !Array.isArray(updates)) break;
+                touchLiveWsMutation(sheetUrl);
                 patchStatesOnPairingUpdate(sheetUrl, updates);
 
                 broadcastToSheet(sheetUrl, {
@@ -674,6 +773,7 @@ wss.on('connection', (ws) => {
             case 'live:grouping': {
                 const { sheetUrl, updates, activeGroups, deletedGroup } = msg;
                 if (!sheetUrl) break;
+                touchLiveWsMutation(sheetUrl);
                 if (Array.isArray(updates)) {
                     patchStatesOnGroupingUpdate(sheetUrl, updates);
                 }
@@ -694,6 +794,7 @@ wss.on('connection', (ws) => {
                 const { sheetUrl, targetName, data } = msg;
                 const role = msg.role || msg.personType;
                 if (!sheetUrl || !role || !data) break;
+                touchLiveWsMutation(sheetUrl);
                 patchStatesOnPersonAttendanceUpdate(sheetUrl, role, targetName, data);
 
                 broadcastToSheet(sheetUrl, {
@@ -805,26 +906,39 @@ function filterRecentOutingSheets(resObj) {
 
 async function executeReadAction(action, data, bypassCache = false) {
     const cacheKey = getReadCacheKey(action, data);
+    const sheetUrl = (data && typeof data === 'object') ? (data.sheetUrl || data.url) : (typeof data === 'string' ? data : null);
 
     if (!bypassCache) {
         const cachedResponse = cache.get(cacheKey);
         if (cachedResponse) {
             const patched = applyPendingMutationsToState(action, data, cachedResponse);
-            return action === 'getRecentOutingSheets' ? filterRecentOutingSheets(patched) : patched;
+            return action === 'getRecentOutingSheets'
+                ? filterRecentOutingSheets(patched)
+                : (action === 'fetchCommAttendance' ? attachRoomBusOptions(sheetUrl, patched) : patched);
         }
     }
 
     if (inFlightRequests.has(cacheKey)) {
         const res = await inFlightRequests.get(cacheKey);
         const patched = applyPendingMutationsToState(action, data, res);
-        return action === 'getRecentOutingSheets' ? filterRecentOutingSheets(patched) : patched;
+        return action === 'getRecentOutingSheets'
+            ? filterRecentOutingSheets(patched)
+            : (action === 'fetchCommAttendance' ? attachRoomBusOptions(sheetUrl, patched) : patched);
     }
 
     const fetchPromise = (async () => {
+        const readStartedAt = Date.now();
         const parsed = await fetchFromGAS(action, data, 3);
+        const existingCached = cache.get(cacheKey);
+        if (bypassCache && sheetUrl && (lastLiveWsMutationAt.get(sheetUrl) || 0) > readStartedAt && existingCached) {
+            const kept = applyPendingMutationsToState(action, data, existingCached);
+            return action === 'fetchCommAttendance' ? attachRoomBusOptions(sheetUrl, kept) : kept;
+        }
         let patched = applyPendingMutationsToState(action, data, parsed);
         if (action === 'getRecentOutingSheets') {
             patched = filterRecentOutingSheets(patched);
+        } else if (action === 'fetchCommAttendance') {
+            patched = attachRoomBusOptions(sheetUrl, patched);
         }
         if (patched && patched.success !== false) {
             cache.set(cacheKey, patched);
@@ -857,15 +971,17 @@ setInterval(async () => {
     }
 
     for (const [sheetUrl, views] of activeSheets.entries()) {
-        if (writeQueue.isBusy || pendingServerMutations.has(sheetUrl)) continue;
+        const lastWsAt = lastLiveWsMutationAt.get(sheetUrl) || 0;
+        if (writeQueue.isBusy || pendingServerMutations.has(sheetUrl) || (Date.now() - lastWsAt < 3000)) continue;
 
         try {
             if (views.has('tracker')) {
                 const commKey = getReadCacheKey('fetchCommAttendance', { sheetUrl });
                 const oldComm = cache.get(commKey);
                 const oldStr = oldComm ? JSON.stringify(oldComm) : null;
+                const pollStartedAt = Date.now();
                 const freshComm = await executeReadAction('fetchCommAttendance', { sheetUrl }, true);
-                if (freshComm && freshComm.success && !pendingServerMutations.has(sheetUrl)) {
+                if (freshComm && freshComm.success && !pendingServerMutations.has(sheetUrl) && (lastLiveWsMutationAt.get(sheetUrl) || 0) <= pollStartedAt) {
                     const newStr = JSON.stringify(freshComm);
                     if (oldStr !== newStr) {
                         broadcastToSheet(sheetUrl, {
@@ -882,8 +998,9 @@ setInterval(async () => {
                 const pairKey = getReadCacheKey('fetchManualPairingData', { sheetUrl });
                 const oldPair = cache.get(pairKey);
                 const oldStr = oldPair ? JSON.stringify(oldPair) : null;
+                const pollStartedAt = Date.now();
                 const freshPair = await executeReadAction('fetchManualPairingData', { sheetUrl }, true);
-                if (freshPair && freshPair.success && !pendingServerMutations.has(sheetUrl)) {
+                if (freshPair && freshPair.success && !pendingServerMutations.has(sheetUrl) && (lastLiveWsMutationAt.get(sheetUrl) || 0) <= pollStartedAt) {
                     const newStr = JSON.stringify(freshPair);
                     if (oldStr !== newStr) {
                         broadcastToSheet(sheetUrl, {
@@ -991,6 +1108,7 @@ app.post('/api', async (req, res) => {
                 type: 'delta:personAttendance',
                 sheetUrl: data.sheetUrl,
                 role: data.type,
+                personType: data.type,
                 targetName: data.targetName,
                 data: data.data,
                 senderId: clientId || null,
@@ -1001,11 +1119,21 @@ app.post('/api', async (req, res) => {
         try {
             const response = await writeQueue.add(async () => {
                 try {
+                    if (action === 'syncManualPairingUpdates' && data && data.sheetUrl && Array.isArray(data.updates) && data.updates.some(u => u && u.op && u.volName)) {
+                        const pairKey = getReadCacheKey('fetchManualPairingData', { sheetUrl: data.sheetUrl });
+                        if (!cache.get(pairKey)) {
+                            await executeReadAction('fetchManualPairingData', { sheetUrl: data.sheetUrl }, false);
+                        }
+                        patchStatesOnPairingUpdate(data.sheetUrl, data.updates);
+                    }
+
                     const parsed = await fetchFromGAS(action, data, 3);
 
                     // Post-write cache management & reconciliation broadcasts
                     if (action === 'addCommJuncture' || action === 'deleteCommJuncture') {
                         if (parsed && parsed.success && sheetUrl) {
+                            applyPendingMutationsToState('fetchCommAttendance', { sheetUrl }, parsed);
+                            attachRoomBusOptions(sheetUrl, parsed);
                             const commKey = getReadCacheKey('fetchCommAttendance', { sheetUrl });
                             cache.set(commKey, parsed);
                             broadcastToSheet(sheetUrl, {

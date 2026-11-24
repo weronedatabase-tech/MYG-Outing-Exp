@@ -1,12 +1,22 @@
 let currentGroupingSheetUrl = null;
 let groupingData = { trainees: [], volunteers: [], meetingLocs: [], dismissalLocs: [] };
 let pendingGroupingUpdates = [];
+let inFlightGroupingUpdates = [];
 let isGroupingSyncing = false;
 let groupingSyncTimeout = null;
 let groupingPollInterval = null;
 let currentGroupingSearch = "";
 let lastGroupingLocalChange = 0;
 let activeGroups = ["1", "2", "3", "4", "5"]; // Pre-populate standard groups
+
+function hasLocalOrInFlightGroupingUpdates() {
+return pendingGroupingUpdates.length > 0 || inFlightGroupingUpdates.length > 0;
+}
+
+function isGroupingItemPendingOrInFlight(name, role) {
+const match = (list) => list.some(p => p.name === name && p.role === role);
+return match(pendingGroupingUpdates) || match(inFlightGroupingUpdates);
+}
 
 const EXPORT_COLORS = [
 '#fef2f2', '#eff6ff', '#f0fdf4', '#fefce8', 
@@ -116,15 +126,16 @@ window.extractedActiveGroups = window.extractedActiveGroups.filter(x => String(x
 
 lastGroupingLocalChange = Date.now();
 renderGroupingList();
-if (changed) {
+if (changed || typeof window.collabSend === 'function') {
 if (typeof window.collabSend === 'function') {
 window.collabSend({
 type: 'live:grouping',
 sheetUrl: currentGroupingSheetUrl,
-updates: liveUpdates
+updates: liveUpdates,
+deletedGroup: String(g)
 });
 }
-triggerGroupingSync();
+if (changed) triggerGroupingSync();
 }
 
 showFlashMessage('groupingGlobalStatus', `Group ${g} deleted.`, 'success');
@@ -246,6 +257,9 @@ const p = (groupingData.trainees || []).find(x => x.name === name);
 if (p) showPersonInfo(p);
 });
 });
+if (typeof window.applyAllCollabRemoteFocus === 'function') {
+window.applyAllCollabRemoteFocus();
+}
 }
 
 // ==========================================
@@ -447,6 +461,7 @@ isGroupingSyncing = true;
 setGroupingSyncButtonState('saving');
 
 const updatesToSync = [...pendingGroupingUpdates];
+inFlightGroupingUpdates = updatesToSync;
 pendingGroupingUpdates = [];
 
 try {
@@ -465,6 +480,7 @@ const idx = pendingGroupingUpdates.findIndex(p => p.name === u.name && p.role ==
 if (idx === -1) pendingGroupingUpdates.push(u);
 });
 } finally {
+inFlightGroupingUpdates = [];
 isGroupingSyncing = false;
 if (pendingGroupingUpdates.length > 0) {
 triggerGroupingSync();
@@ -480,13 +496,13 @@ if (isGroupingSyncing) return;
 
 if (document.activeElement && document.activeElement.id === 'groupingSearchInput') return;
 
-if (pendingGroupingUpdates.length > 0) return;
+if (hasLocalOrInFlightGroupingUpdates()) return;
 
 const fetchStartTime = Date.now();
 
 try {
 const res = await apiCall('fetchManualPairingData', { sheetUrl: currentGroupingSheetUrl });
-if(res.success && !isGroupingSyncing && pendingGroupingUpdates.length === 0) {
+if(res.success && !isGroupingSyncing && !hasLocalOrInFlightGroupingUpdates()) {
 if (lastGroupingLocalChange > fetchStartTime) return;
 
 const newDataStr = JSON.stringify(res.data);
@@ -1195,18 +1211,28 @@ if (typeof window.collabOn !== 'function') return;
 window.collabOn('delta:grouping', (msg) => {
 if (msg.senderId && msg.senderId === window.collabClientId) return;
 if (!currentGroupingSheetUrl || msg.sheetUrl !== currentGroupingSheetUrl) return;
-if (!Array.isArray(msg.updates) || !groupingData) return;
+if (!groupingData) return;
 
 let changed = false;
 const pulsedTrainees = [];
 
+if (msg.deletedGroup) {
+const delG = String(msg.deletedGroup).trim();
+if (activeGroups.includes(delG)) {
+activeGroups = activeGroups.filter(x => String(x) !== delG);
+changed = true;
+}
+}
+
+if (Array.isArray(msg.updates)) {
 msg.updates.forEach(u => {
-if (pendingGroupingUpdates.some(p => p.name === u.name && p.role === u.role)) return;
+if (isGroupingItemPendingOrInFlight(u.name, u.role)) return;
 
 if (u.role === 'TRAINEE' && groupingData.trainees) {
 const t = groupingData.trainees.find(x => x.name === u.name);
 if (t && u.group !== undefined && String(t.group || '') !== String(u.group || '')) {
 t.group = u.group;
+if (t.extra) t.extra.t_group = u.group;
 if (u.group && !activeGroups.includes(String(u.group))) {
 activeGroups.push(String(u.group));
 }
@@ -1216,12 +1242,13 @@ pulsedTrainees.push(u.name);
 } else if (u.role === 'VOLUNTEER' && groupingData.volunteers) {
 const v = groupingData.volunteers.find(x => x.name === u.name);
 if (v) {
-if (u.groupIC !== undefined) { v.groupIC = u.groupIC; changed = true; }
-if (u.meetIC !== undefined) { v.meetIC = u.meetIC; changed = true; }
-if (u.dismissIC !== undefined) { v.dismissIC = u.dismissIC; changed = true; }
+if (u.groupIC !== undefined && v.groupIC !== u.groupIC) { v.groupIC = u.groupIC; changed = true; }
+if (u.meetIC !== undefined && v.meetIC !== u.meetIC) { v.meetIC = u.meetIC; changed = true; }
+if (u.dismissIC !== undefined && v.dismissIC !== u.dismissIC) { v.dismissIC = u.dismissIC; changed = true; }
 }
 }
 });
+}
 
 if (changed) {
 if (document.getElementById('groupingList')) {
@@ -1255,8 +1282,21 @@ if (!Array.isArray(msg.updates) || !groupingData || !groupingData.trainees) retu
 let changed = false;
 msg.updates.forEach(u => {
 const t = groupingData.trainees.find(x => x.name === u.traineeName);
-if (t && t.volPaired !== u.volPaired) {
-t.volPaired = u.volPaired;
+if (!t) return;
+let nextVolPaired = t.volPaired || "";
+if (u.op === 'add' && u.volName) {
+const vols = nextVolPaired ? nextVolPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+if (!vols.some(v => v.toLowerCase() === u.volName.toLowerCase())) vols.push(u.volName);
+nextVolPaired = vols.join(', ');
+} else if (u.op === 'remove' && u.volName) {
+const vols = nextVolPaired ? nextVolPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+nextVolPaired = vols.filter(v => v.toLowerCase() !== u.volName.toLowerCase()).join(', ');
+} else if (u.volPaired !== undefined) {
+nextVolPaired = u.volPaired;
+}
+if (t.volPaired !== nextVolPaired) {
+t.volPaired = nextVolPaired;
+if (t.extra) t.extra.t_paired_vol = nextVolPaired;
 changed = true;
 }
 });
@@ -1275,20 +1315,117 @@ if (!msg.multipleUpdates || !msg.multipleUpdates['__GONE_HOME__'] || !groupingDa
 let changed = false;
 msg.multipleUpdates['__GONE_HOME__'].forEach(item => {
 const t = groupingData.trainees.find(x => x.name === item.name);
-if (t && t.isGoneHome !== (item.status === true)) {
-t.isGoneHome = item.status === true;
+const nextGone = item.status === true || String(item.status).toLowerCase() === 'true';
+if (t && t.isGoneHome !== nextGone) {
+t.isGoneHome = nextGone;
 changed = true;
 }
 });
 if (changed && document.getElementById('groupingList')) {
 renderGroupingList();
+const icModal = document.getElementById('assignICModal');
+if (icModal && !icModal.classList.contains('hidden')) renderAssignICModal();
 }
 });
 
-// 4. Full Authoritative State Broadcast
-window.collabOn('state:manualPairing', (msg) => {
+// 4. Live Person Details / Attendance Updates
+window.collabOn('delta:personAttendance', (msg) => {
 if (!currentGroupingSheetUrl || msg.sheetUrl !== currentGroupingSheetUrl) return;
-if (!msg.data || isGroupingSyncing || pendingGroupingUpdates.length > 0) return;
+if (!groupingData) return;
+
+const targetName = msg.targetName;
+const data = msg.data || {};
+const role = String(msg.personType || msg.role || '').toUpperCase();
+if (!targetName || !role) return;
+const normName = String(targetName).toLowerCase().trim();
+
+let attVal = undefined;
+for (const k in data) {
+const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+if (cleanK.includes('attending')) attVal = String(data[k]).toLowerCase().trim();
+}
+
+let changed = false;
+if (role === 'TRAINEE') {
+let t = (groupingData.trainees || []).find(x => x.name.toLowerCase().trim() === normName);
+if (!t && attVal === 'y') {
+t = { name: targetName, role: 'TRAINEE', caregivers: 0, attending: 'y', volPaired: '', project: '', group: '', isGoneHome: false, extra: { role: 'TRAINEE' } };
+groupingData.trainees.push(t);
+changed = true;
+}
+if (t) {
+if (!t.extra) t.extra = {};
+for (const k in data) {
+const val = data[k];
+const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+if (cleanK.includes('attending')) {
+const nextAtt = String(val).toLowerCase().trim();
+if (t.attending !== nextAtt) { t.attending = nextAtt; changed = true; }
+if (nextAtt === 'n' && t.volPaired) { t.volPaired = ''; changed = true; }
+} else if (cleanK.includes('caregiver')) {
+const cg = parseInt(val, 10) || 0;
+if (t.caregivers !== cg) { t.caregivers = cg; changed = true; }
+} else if (cleanK.includes('group')) {
+const grp = String(val || '').trim();
+if (String(t.group || '') !== grp) { t.group = grp; t.extra.t_group = grp; changed = true; }
+} else if (cleanK.includes('vol') && cleanK.includes('paired')) {
+const vp = String(val || '').trim();
+if (String(t.volPaired || '') !== vp) { t.volPaired = vp; t.extra.t_paired_vol = vp; changed = true; }
+} else if (cleanK.includes('remark')) {
+if (t.extra.remark !== val) { t.extra.remark = val; t.extra.remarks = val; changed = true; }
+} else if (cleanK.includes('11') || cleanK.includes('oneonone')) {
+if (t.extra.t_one_on_one !== val) { t.extra.t_one_on_one = val; changed = true; }
+}
+t.extra[k] = val;
+}
+}
+} else if (role === 'VOLUNTEER') {
+if (attVal === 'n' || attVal === '') {
+const beforeLen = (groupingData.volunteers || []).length;
+groupingData.volunteers = (groupingData.volunteers || []).filter(v => v.name.toLowerCase().trim() !== normName);
+if (groupingData.volunteers.length !== beforeLen) changed = true;
+if (attVal === 'n') {
+(groupingData.trainees || []).forEach(t => {
+if (t.volPaired && t.volPaired.toLowerCase().includes(normName)) {
+const vols = t.volPaired.split(/[,|\n]+/).map(x => x.trim()).filter(x => x);
+t.volPaired = vols.filter(x => x.toLowerCase() !== normName).join(', ');
+if (t.extra) t.extra.t_paired_vol = t.volPaired;
+changed = true;
+}
+});
+}
+} else {
+let v = (groupingData.volunteers || []).find(x => x.name.toLowerCase().trim() === normName);
+if (!v && attVal === 'y') {
+v = { name: targetName, role: 'VOLUNTEER', project: data['Project'] || '', groupIC: false, meetIC: false, dismissIC: false, extra: { role: 'VOLUNTEER' } };
+groupingData.volunteers.push(v);
+changed = true;
+}
+if (v) {
+if (!v.extra) v.extra = {};
+for (const k in data) {
+const val = data[k];
+const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+if (cleanK.includes('meetinglocation')) { v.extra.v_meet = val; changed = true; }
+else if (cleanK.includes('dismissallocation')) { v.extra.v_dismiss = val; changed = true; }
+else if (cleanK.includes('remark')) { v.extra.remark = val; v.extra.remarks = val; changed = true; }
+v.extra[k] = val;
+}
+}
+}
+}
+
+if (changed) {
+if (document.getElementById('groupingList')) renderGroupingList();
+const icModal = document.getElementById('assignICModal');
+if (icModal && !icModal.classList.contains('hidden')) renderAssignICModal();
+}
+});
+
+// 5. Full Authoritative State Broadcast
+window.collabOn('state:pairingData', (msg) => {
+if (!currentGroupingSheetUrl || msg.sheetUrl !== currentGroupingSheetUrl) return;
+if (!msg.data || isGroupingSyncing || hasLocalOrInFlightGroupingUpdates()) return;
 
 const newDataStr = JSON.stringify(msg.data);
 const oldDataStr = JSON.stringify(groupingData);
@@ -1304,15 +1441,15 @@ renderAssignICModal();
 }
 });
 
-// 5. Reconnect / Wake Sync
+// 6. Reconnect / Wake Sync
 window.collabOn('collab:reconnected', () => {
 if (currentGroupingSheetUrl && document.getElementById('groupingList')) {
 if (typeof window.collabSetContext === 'function') {
 window.collabSetContext('grouping', currentGroupingSheetUrl);
 }
-if (!isGroupingSyncing && pendingGroupingUpdates.length === 0) {
+if (!isGroupingSyncing && !hasLocalOrInFlightGroupingUpdates()) {
 apiCall('fetchManualPairingData', { sheetUrl: currentGroupingSheetUrl }).then(res => {
-if (res && res.success && !isGroupingSyncing && pendingGroupingUpdates.length === 0) {
+if (res && res.success && !isGroupingSyncing && !hasLocalOrInFlightGroupingUpdates()) {
 groupingData = res.data;
 renderGroupingList();
 }

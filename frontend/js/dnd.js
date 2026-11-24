@@ -13,6 +13,7 @@ let dndState = {
    rectWidth: 0,
    rectHeight: 0
 };
+window.dndState = dndState;
 
 if (!window.dndInitialized) {
    window.dndInitialized = true;

@@ -1,14 +1,57 @@
 let currentManualPairingSheetUrl = null;
 let manualPairingData = { trainees: [], volunteers: [], priVolMap: new Map() };
 let pendingPairingUpdates = [];
+let inFlightPairingUpdates = [];
 let isManualPairingSyncing = false;
 let manualPairingSyncTimeout = null;
 let manualPairingPollInterval = null;
 let lastPairingLocalChange = 0;
+const pairingCardTimers = new Map();
 
 let isFilteredManualPairingMode = false;
 let filteredManualPairingSourceView = null;
 let showOnlyUnpairedVols = false;
+
+function hasLocalOrInFlightPairingUpdates() {
+return pendingPairingUpdates.length > 0 || inFlightPairingUpdates.length > 0;
+}
+
+function isPairingOpPendingOrInFlight(traineeName, volName) {
+const tNorm = String(traineeName || '').toLowerCase().trim();
+const vNorm = String(volName || '').toLowerCase().trim();
+const check = (list) => list.some(p => {
+if (String(p.traineeName || '').toLowerCase().trim() !== tNorm) return false;
+if (!p.op || !vNorm) return true;
+return String(p.volName || '').toLowerCase().trim() === vNorm;
+});
+return check(pendingPairingUpdates) || check(inFlightPairingUpdates);
+}
+
+function queuePairingOp(traineeName, op, volName, volPaired) {
+const idx = pendingPairingUpdates.findIndex(u =>
+u.traineeName === traineeName &&
+u.op &&
+String(u.volName || '').toLowerCase() === String(volName || '').toLowerCase()
+);
+const entry = { traineeName, op, volName, volPaired };
+if (idx > -1) {
+pendingPairingUpdates[idx] = entry;
+} else {
+pendingPairingUpdates.push(entry);
+}
+}
+
+function applyPairingDeltaToList(currentStr, op, volName) {
+const vols = currentStr ? currentStr.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+const vNorm = String(volName || '').toLowerCase().trim();
+if (!vNorm) return vols.join(', ');
+if (op === 'add') {
+if (!vols.some(v => v.toLowerCase() === vNorm)) vols.push(volName.trim());
+} else if (op === 'remove') {
+return vols.filter(v => v.toLowerCase() !== vNorm).join(', ');
+}
+return vols.join(', ');
+}
 
 // ==========================================
 // MANUAL PAIRING LOGIC
@@ -299,7 +342,15 @@ pairedNames = item.volPaired ? item.volPaired.split(/[,|\n]+/).map(v => v.trim()
 
 const querySafeName = item.name.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 const cardSelector = `.dnd-dropzone[data-name="${querySafeName}"][data-role="${role}"]`;
-const existingCard = document.querySelector(cardSelector);
+const timerKey = `${role}::${item.name}`;
+const prevTimer = pairingCardTimers.get(timerKey);
+if (prevTimer) {
+clearTimeout(prevTimer);
+pairingCardTimers.delete(timerKey);
+}
+const matchedCards = Array.from(document.querySelectorAll(cardSelector));
+const existingCard = matchedCards[0] || null;
+for (let i = 1; i < matchedCards.length; i++) matchedCards[i].remove();
 
 // Check if it should be in the DOM based on current filters
 let shouldBeInDOM = true;
@@ -329,6 +380,7 @@ const newHtml = generatePairingCardHtml(item, pairedNames);
 
 if (existingCard) {
 if (!shouldBeInDOM) {
+    existingCard.dataset.collapsing = '1';
     existingCard.style.overflow = 'hidden';
     existingCard.style.minHeight = '0';
     existingCard.style.transition = 'opacity 0.2s ease, height 0.3s ease, margin 0.3s ease, padding 0.3s ease';
@@ -339,14 +391,17 @@ if (!shouldBeInDOM) {
     existingCard.style.margin = '0px';
     existingCard.style.padding = '0px';
     existingCard.style.border = 'none';
-    setTimeout(() => {
-        existingCard.remove();
+    const timerId = setTimeout(() => {
+        pairingCardTimers.delete(timerKey);
+        if (existingCard.dataset.collapsing !== '1') return;
+        if (existingCard.isConnected) existingCard.remove();
         const containerId = role === 'VOLUNTEER' ? 'dnd-source-pool' : 'dnd-target-list';
         const container = document.getElementById(containerId);
         if (container && container.querySelectorAll('.dnd-dropzone').length === 0) {
             container.innerHTML = `<p class="text-[10px] text-gray-500 font-bold p-2 text-center mt-2">No active ${role === 'VOLUNTEER' ? 'volunteers' : 'trainees'} matching search.</p>`;
         }
     }, 300);
+    pairingCardTimers.set(timerKey, timerId);
 } else {
     const temp = document.createElement('div');
     temp.innerHTML = newHtml;
@@ -356,6 +411,7 @@ if (!shouldBeInDOM) {
         const p = (manualPairingData[role === 'VOLUNTEER' ? 'volunteers' : 'trainees'] || []).find(x => x.name === item.name);
         if (p) showPersonInfo(p);
     });
+    if (typeof window.applyAllCollabRemoteFocus === 'function') window.applyAllCollabRemoteFocus();
 }
 } else {
 if (shouldBeInDOM) {
@@ -376,6 +432,7 @@ if (shouldBeInDOM) {
             const p = (manualPairingData[role === 'VOLUNTEER' ? 'volunteers' : 'trainees'] || []).find(x => x.name === item.name);
             if (p) showPersonInfo(p);
         });
+        if (typeof window.applyAllCollabRemoteFocus === 'function') window.applyAllCollabRemoteFocus();
         
         void newCardNode.offsetWidth;
         newCardNode.style.opacity = '1';
@@ -386,6 +443,9 @@ if (shouldBeInDOM) {
 }
 
 function renderManualPairings() {
+pairingCardTimers.forEach(timer => clearTimeout(timer));
+pairingCardTimers.clear();
+
 const sourcePool = document.getElementById('dnd-source-pool');
 const targetList = document.getElementById('dnd-target-list');
 
@@ -490,6 +550,9 @@ const p = (manualPairingData[arr] || []).find(x => x.name === name);
 if (p) showPersonInfo(p);
 });
 });
+if (typeof window.applyAllCollabRemoteFocus === 'function') {
+window.applyAllCollabRemoteFocus();
+}
 }
 
 function handleManualPairingDrop(sourceName, sourceRole, targetName) {
@@ -528,18 +591,13 @@ if (!exists) {
 currentVols.push(volName);
 trainee.volPaired = currentVols.join(', ');
 
-const updateIndex = pendingPairingUpdates.findIndex(u => u.traineeName === traineeName);
-if (updateIndex > -1) {
-pendingPairingUpdates[updateIndex].volPaired = trainee.volPaired;
-} else {
-pendingPairingUpdates.push({ traineeName: traineeName, volPaired: trainee.volPaired });
-}
+queuePairingOp(traineeName, 'add', volName, trainee.volPaired);
 
 if (typeof window.collabSend === 'function') {
 window.collabSend({
 type: 'live:pairing',
 sheetUrl: currentManualPairingSheetUrl,
-updates: [{ traineeName: traineeName, volPaired: trainee.volPaired }]
+updates: [{ traineeName: traineeName, op: 'add', volName: volName, volPaired: trainee.volPaired }]
 });
 }
 
@@ -566,18 +624,13 @@ const cleanVolToRemove = volName.toLowerCase();
 currentVols = currentVols.filter(v => v.toLowerCase() !== cleanVolToRemove);
 trainee.volPaired = currentVols.join(', ');
 
-const updateIndex = pendingPairingUpdates.findIndex(u => u.traineeName === traineeName);
-if (updateIndex > -1) {
-pendingPairingUpdates[updateIndex].volPaired = trainee.volPaired;
-} else {
-pendingPairingUpdates.push({ traineeName: traineeName, volPaired: trainee.volPaired });
-}
+queuePairingOp(traineeName, 'remove', volName, trainee.volPaired);
 
 if (typeof window.collabSend === 'function') {
 window.collabSend({
 type: 'live:pairing',
 sheetUrl: currentManualPairingSheetUrl,
-updates: [{ traineeName: traineeName, volPaired: trainee.volPaired }]
+updates: [{ traineeName: traineeName, op: 'remove', volName: volName, volPaired: trainee.volPaired }]
 });
 }
 
@@ -632,6 +685,7 @@ isManualPairingSyncing = true;
 setManualPairingSyncButtonState('saving');
 
 const updatesToSync = [...pendingPairingUpdates];
+inFlightPairingUpdates = updatesToSync;
 pendingPairingUpdates = [];
 
 try {
@@ -646,10 +700,14 @@ throw new Error(res.message);
 console.error(e);
 setManualPairingSyncButtonState('error');
 updatesToSync.forEach(u => {
-const idx = pendingPairingUpdates.findIndex(p => p.traineeName === u.traineeName);
+const idx = pendingPairingUpdates.findIndex(p =>
+p.traineeName === u.traineeName &&
+String(p.volName || '').toLowerCase() === String(u.volName || '').toLowerCase()
+);
 if (idx === -1) pendingPairingUpdates.push(u);
 });
 } finally {
+inFlightPairingUpdates = [];
 isManualPairingSyncing = false;
 if (pendingPairingUpdates.length > 0) {
 triggerManualPairingSync();
@@ -662,13 +720,13 @@ if (manualPairingPollInterval) clearInterval(manualPairingPollInterval);
 
 manualPairingPollInterval = setInterval(async () => {
 if (isManualPairingSyncing || (window.dndState && (window.dndState.el || window.dndState.isDragging))) return;
-if (pendingPairingUpdates.length > 0) return;
+if (hasLocalOrInFlightPairingUpdates()) return;
 
 const fetchStartTime = Date.now();
 
 try {
 const res = await apiCall('fetchManualPairingData', { sheetUrl: currentManualPairingSheetUrl });
-if(res.success && !isManualPairingSyncing && pendingPairingUpdates.length === 0) {
+if(res.success && !isManualPairingSyncing && !hasLocalOrInFlightPairingUpdates()) {
 if (lastPairingLocalChange > fetchStartTime) return;
 
 const newDataStr = JSON.stringify(res.data);
@@ -820,13 +878,22 @@ if (!Array.isArray(msg.updates) || !manualPairingData || !manualPairingData.trai
 
 let anyChanged = false;
 msg.updates.forEach(u => {
-if (pendingPairingUpdates.some(p => p.traineeName === u.traineeName)) return;
+if (isPairingOpPendingOrInFlight(u.traineeName, u.volName)) return;
 const trainee = manualPairingData.trainees.find(t => t.name === u.traineeName);
-if (!trainee || trainee.volPaired === u.volPaired) return;
+if (!trainee) return;
+
+let nextVolPaired;
+if (u.op && u.volName) {
+nextVolPaired = applyPairingDeltaToList(trainee.volPaired, u.op, u.volName);
+} else {
+nextVolPaired = u.volPaired != null ? String(u.volPaired).trim() : "";
+}
+if (trainee.volPaired === nextVolPaired) return;
 
 const oldVols = trainee.volPaired ? trainee.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
-const newVols = u.volPaired ? u.volPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
-trainee.volPaired = u.volPaired;
+const newVols = nextVolPaired ? nextVolPaired.split(/[,|\n]+/).map(v => v.trim()).filter(v => v) : [];
+trainee.volPaired = nextVolPaired;
+if (trainee.extra) trainee.extra.t_paired_vol = nextVolPaired;
 anyChanged = true;
 
 const allAffectedVols = new Set([...oldVols, ...newVols]);
@@ -859,8 +926,9 @@ if (!msg.multipleUpdates || !msg.multipleUpdates['__GONE_HOME__'] || !manualPair
 let changed = false;
 msg.multipleUpdates['__GONE_HOME__'].forEach(item => {
 const trainee = manualPairingData.trainees.find(t => t.name === item.name);
-if (trainee && trainee.isGoneHome !== (item.status === true)) {
-trainee.isGoneHome = item.status === true;
+const nextGone = item.status === true || String(item.status).toLowerCase() === 'true';
+if (trainee && trainee.isGoneHome !== nextGone) {
+trainee.isGoneHome = nextGone;
 changed = true;
 updatePairingCardDOM(trainee.name, 'TRAINEE');
 if (trainee.volPaired) {
@@ -887,6 +955,7 @@ if (u.role === 'TRAINEE' && u.group !== undefined) {
 const trainee = manualPairingData.trainees.find(t => t.name === u.name);
 if (trainee && String(trainee.group || '') !== String(u.group || '')) {
 trainee.group = u.group;
+if (trainee.extra) trainee.extra.t_group = u.group;
 updatePairingCardDOM(trainee.name, 'TRAINEE');
 }
 }
@@ -900,32 +969,114 @@ if (!manualPairingData) return;
 
 const targetName = msg.targetName;
 const data = msg.data || {};
-const role = String(msg.personType || '').toUpperCase();
-const arr = role === 'VOLUNTEER' ? manualPairingData.volunteers : manualPairingData.trainees;
-if (!arr || !targetName) return;
+const role = String(msg.personType || msg.role || '').toUpperCase();
+if (!targetName || !role) return;
+const normName = String(targetName).toLowerCase().trim();
 
-const person = arr.find(p => p.name === targetName);
+let attVal = undefined;
+for (const k in data) {
+const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+if (cleanK.includes('attending')) attVal = String(data[k]).toLowerCase().trim();
+}
+
+if (role === 'TRAINEE') {
+let person = (manualPairingData.trainees || []).find(p => p.name.toLowerCase().trim() === normName);
+let changed = false;
+if (!person && attVal === 'y') {
+person = {
+name: targetName,
+role: 'TRAINEE',
+caregivers: 0,
+attending: 'y',
+volPaired: '',
+project: '',
+group: '',
+isGoneHome: false,
+extra: { role: 'TRAINEE' }
+};
+manualPairingData.trainees.push(person);
+changed = true;
+}
 if (person) {
 if (!person.extra) person.extra = {};
 for (const k in data) {
 const val = data[k];
 const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-if (cleanK.includes('attending')) person.attending = String(val).toLowerCase().trim();
-else if (cleanK.includes('caregiver')) person.caregivers = parseInt(val, 10) || 0;
-else if (cleanK.includes('vol') && cleanK.includes('paired')) person.volPaired = val;
-else if (cleanK.includes('remark')) { person.extra.remark = val; person.extra.remarks = val; }
-else if (cleanK.includes('11') || cleanK.includes('oneonone')) person.extra.t_one_on_one = val;
+if (cleanK.includes('attending')) {
+const nextAtt = String(val).toLowerCase().trim();
+if (person.attending !== nextAtt) { person.attending = nextAtt; changed = true; }
+person.isAttendingN = nextAtt === 'n';
+person.isAttendingUnknown = nextAtt === '';
+if (nextAtt === 'n' && person.volPaired) { person.volPaired = ''; changed = true; }
+} else if (cleanK.includes('caregiver')) {
+const cg = parseInt(val, 10) || 0;
+if (person.caregivers !== cg) { person.caregivers = cg; changed = true; }
+} else if (cleanK.includes('group')) {
+const grp = String(val || '').trim();
+if (String(person.group || '') !== grp) { person.group = grp; person.extra.t_group = grp; changed = true; }
+} else if (cleanK.includes('vol') && cleanK.includes('paired')) {
+const vp = String(val || '').trim();
+if (String(person.volPaired || '') !== vp) { person.volPaired = vp; person.extra.t_paired_vol = vp; changed = true; }
+} else if (cleanK.includes('remark')) {
+if (person.extra.remark !== val) { person.extra.remark = val; person.extra.remarks = val; changed = true; }
+} else if (cleanK.includes('11') || cleanK.includes('oneonone')) {
+if (person.extra.t_one_on_one !== val) { person.extra.t_one_on_one = val; changed = true; }
+}
 person.extra[k] = val;
 }
-updatePairingCardDOM(targetName, role);
+if (changed) {
+renderManualPairings();
 updateGlobalUnpairedCount();
+}
+}
+} else if (role === 'VOLUNTEER') {
+if (attVal === 'n' || attVal === '') {
+const beforeLen = (manualPairingData.volunteers || []).length;
+manualPairingData.volunteers = (manualPairingData.volunteers || []).filter(v => v.name.toLowerCase().trim() !== normName);
+let changed = manualPairingData.volunteers.length !== beforeLen;
+if (attVal === 'n') {
+(manualPairingData.trainees || []).forEach(t => {
+if (t.volPaired && t.volPaired.toLowerCase().includes(normName)) {
+const vols = t.volPaired.split(/[,|\n]+/).map(x => x.trim()).filter(x => x);
+t.volPaired = vols.filter(x => x.toLowerCase() !== normName).join(', ');
+if (t.extra) t.extra.t_paired_vol = t.volPaired;
+changed = true;
+}
+});
+}
+if (changed) {
+renderManualPairings();
+updateGlobalUnpairedCount();
+}
+} else {
+let person = (manualPairingData.volunteers || []).find(v => v.name.toLowerCase().trim() === normName);
+let changed = false;
+if (!person && attVal === 'y') {
+person = { name: targetName, role: 'VOLUNTEER', project: data['Project'] || '', groupIC: false, meetIC: false, dismissIC: false, extra: { role: 'VOLUNTEER' } };
+manualPairingData.volunteers.push(person);
+changed = true;
+}
+if (person) {
+if (!person.extra) person.extra = {};
+for (const k in data) {
+const val = data[k];
+const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+if (cleanK.includes('project') && val) { if (person.project !== val) { person.project = val; changed = true; } }
+else if (cleanK.includes('meetinglocation')) { person.extra.v_meet = val; changed = true; }
+else if (cleanK.includes('dismissallocation')) { person.extra.v_dismiss = val; changed = true; }
+else if (cleanK.includes('remark')) { person.extra.remark = val; person.extra.remarks = val; changed = true; }
+person.extra[k] = val;
+}
+if (changed) renderManualPairings();
+}
+}
 }
 });
 
 // 5. Full Authoritative Pairing State Broadcast
-window.collabOn('state:manualPairing', (msg) => {
+window.collabOn('state:pairingData', (msg) => {
 if (!currentManualPairingSheetUrl || msg.sheetUrl !== currentManualPairingSheetUrl) return;
-if (!msg.data || isManualPairingSyncing || pendingPairingUpdates.length > 0) return;
+if (!msg.data || isManualPairingSyncing || hasLocalOrInFlightPairingUpdates()) return;
 if (window.dndState && (window.dndState.el || window.dndState.isDragging)) return;
 if (!document.getElementById('dnd-source-pool')) return;
 
@@ -943,9 +1094,9 @@ if (currentManualPairingSheetUrl && document.getElementById('dnd-source-pool')) 
 if (typeof window.collabSetContext === 'function') {
 window.collabSetContext('pairing', currentManualPairingSheetUrl);
 }
-if (!isManualPairingSyncing && pendingPairingUpdates.length === 0) {
+if (!isManualPairingSyncing && !hasLocalOrInFlightPairingUpdates()) {
 apiCall('fetchManualPairingData', { sheetUrl: currentManualPairingSheetUrl }).then(res => {
-if (res && res.success && !isManualPairingSyncing && pendingPairingUpdates.length === 0) {
+if (res && res.success && !isManualPairingSyncing && !hasLocalOrInFlightPairingUpdates()) {
 manualPairingData = res.data;
 renderManualPairings();
 }

@@ -4,16 +4,7 @@
  */
 
 (function initCollabIdentity() {
-    try {
-        let cid = sessionStorage.getItem('myg_collabClientId');
-        if (!cid) {
-            cid = 'c_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
-            sessionStorage.setItem('myg_collabClientId', cid);
-        }
-        window.collabClientId = cid;
-    } catch (e) {
-        window.collabClientId = 'c_' + Math.random().toString(36).substring(2, 10);
-    }
+    window.collabClientId = 'c_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
 })();
 
 window.collabState = {
@@ -184,8 +175,8 @@ function connectCollabWebSocket() {
         }
         if (!msg || !msg.type) return;
 
-        // Ignore our own echoed deltas
-        if (msg.senderId && msg.senderId === window.collabClientId) {
+        // Ignore our own echoed deltas unless server explicitly marks forceApply (e.g., resolved merge)
+        if (msg.senderId && msg.senderId === window.collabClientId && !msg.forceApply) {
             return;
         }
 
